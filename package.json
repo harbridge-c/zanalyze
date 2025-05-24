@@ -35,7 +35,7 @@
         "@vortiq/eml-parse-js": "^0.0.1",
         "@theunwalked/cardigantime": "^0.0.1",
         "@riotprompt/riotprompt": "^0.0.1",
-        "@maxdrellin/xenocline": "^0.0.1",
+        "@maxdrellin/xenocline": "^0.0.2",
         "commander": "^14.0.0",
         "dayjs": "^1.11.13",
         "deepmerge-ts": "^7.1.5",
