@@ -1,6 +1,6 @@
 {
     "name": "@vortiq/zanalyze",
-    "version": "0.0.13",
+    "version": "0.0.1",
     "description": "EML Processor",
     "main": "dist/main.js",
     "type": "module",
