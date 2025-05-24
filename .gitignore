@@ -1,0 +1,14 @@
+.env 
+dist
+node_modules
+credentials.json
+token.json
+*.log
+.vscode
+coverage/
+exports/
+test/
+output/
+input/
+.crudzap/
+pnpm-workspace.yaml

@@ -1,0 +1,62 @@
+taxonomy:
+  personal:
+    family:
+      - event_planning
+      - childcare_school_coordination
+      - household_management
+    finance:
+      - bills_statements
+      - personal_taxes
+      - budgeting
+    health:
+      - medical_appointments
+      - health_communications
+      - insurance_documents
+    travel_events:
+      - reservations
+      - trip_planning
+      - event_tickets
+    friends:
+      - casual_conversations
+      - invitations
+      - updates
+
+  professional:
+    work:
+      - colleagues_clients
+      - tasks_projects
+      - deadlines_deliverables
+    career:
+      - job_inquiries_opportunities
+      - professional_networking
+    professional_development:
+      - courses_training
+      - certifications
+    financial_administrative:
+      - payroll_expenses
+      - tax_documents
+
+  transactional:
+    orders_purchases:
+      - receipts_invoices
+      - shipping_notifications
+    service_subscriptions:
+      - account_notices
+      - renewal_reminders
+    security_account_management:
+      - password_resets
+      - security_alerts
+      - two_factor_authentication
+
+  marketing_and_promotions:
+    - retail_promotions
+    - newsletters_updates
+    - events_offers
+
+  important_and_urgent:
+    - time_sensitive
+    - requires_immediate_attention
+
+  spam_and_junk:
+    - unsolicited_emails
+    - harmful_irrelevant

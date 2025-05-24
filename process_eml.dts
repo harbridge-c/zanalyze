@@ -1,0 +1,536 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { simpleParser, ParsedMail, Attachment } from 'mailparser';
+import { Command } from 'commander';
+import { load as loadYaml } from 'js-yaml';
+import * as xml2js from 'xml2js';
+
+interface MatchConditions {
+  From?: string[];
+  Subject?: string[];
+}
+
+interface Config {
+  inputDir: string;
+  outputDir: string;
+  skip?: MatchConditions;
+  tags?: Record<string, MatchConditions>;
+}
+
+const DEFAULT_CONFIG_PATH = './config/exports/outlook/config.yaml';
+
+type ContentPriority = 'text' | 'html';
+
+interface Args {
+  inputDir: string;
+  outputDir: string;
+  priority: ContentPriority;
+}
+
+interface EmailHeaders {
+  date?: string;
+  from?: string;
+  to?: string;
+  messageId?: string;
+  subject?: string;
+  cc?: string;
+  bcc?: string;
+  contentType?: string;
+}
+
+/**
+ * Sanitize a string for use in a filename.
+ */
+function sanitizeFilename(filename: string): string {
+  // Replace characters that are invalid in filenames
+  const sanitized = filename.replace(/[\\/*?:"<>|]/g, '_');
+  // Limit filename length
+  return sanitized.length > 150 ? sanitized.substring(0, 150) : sanitized;
+}
+
+/**
+ * Extract important headers from the parsed email
+ */
+function extractHeaders(parsed: ParsedMail): EmailHeaders {
+  // Helper function to safely extract email addresses
+  const getAddressText = (obj: any): string => {
+    if (!obj) return '';
+    if (typeof obj.text === 'string') return obj.text;
+    if (Array.isArray(obj.value)) {
+      return obj.value.map((a: any) => a.address).filter(Boolean).join(', ');
+    }
+    return '';
+  };
+
+  // Safely get header value with fallback
+  const getHeader = (name: string): string => {
+    const value = parsed.headers.get(name);
+    return typeof value === 'string' ? value : '';
+  };
+
+  return {
+    date: parsed.date?.toISOString() || new Date().toISOString(),
+    from: getAddressText(parsed.from),
+    to: getAddressText(parsed.to),
+    messageId: parsed.messageId || '',
+    subject: parsed.subject || 'No Subject',
+    cc: getAddressText(parsed.cc),
+    bcc: getAddressText(parsed.bcc),
+    contentType: getHeader('content-type'),
+  };
+}
+
+/**
+ * Save email content to a file
+ */
+function saveEmailContent(content: string, outputPath: string, extension: string): void {
+  const filePath = `${outputPath}.${extension}`;
+  fs.writeFileSync(filePath, content);
+  console.log(`Saved content as: ${filePath}`);
+}
+
+/**
+ * Save email attachments
+ */
+async function saveAttachments(
+  attachments: Attachment[],
+  baseOutputPath: string,
+  baseFilename: string
+): Promise<void> {
+  if (!attachments || attachments.length === 0) return;
+
+  const attachmentDir = path.join(path.dirname(baseOutputPath), 'attachments');
+
+  // Ensure attachment directory exists
+  if (!fs.existsSync(attachmentDir)) {
+    fs.mkdirSync(attachmentDir, { recursive: true });
+  }
+
+  for (const attachment of attachments) {
+    if (attachment.filename && attachment.content) {
+      const safeAttachmentName = sanitizeFilename(attachment.filename);
+      const attachmentPath = path.join(
+        attachmentDir,
+        `${baseFilename}_${safeAttachmentName}`
+      );
+
+      fs.writeFileSync(attachmentPath, attachment.content);
+      console.log(`Saved attachment: ${attachmentPath}`);
+    }
+  }
+}
+
+/**
+ * Create XML representation of the email
+ */
+function createEmailXml(headers: EmailHeaders, content: string, contentType: 'text' | 'html', tags: string[] = []): string {
+  return `<email>
+  <date>${headers.date || ''}</date>
+  <to><![CDATA[ ${headers.to || ''} ]]></to>
+  <from><![CDATA[ ${headers.from || ''} ]]></from>
+  <subject><![CDATA[ ${headers.subject || ''} ]]></subject>
+  ${headers.cc ? `<cc><![CDATA[ ${headers.cc} ]]></cc>` : ''}
+  ${headers.bcc ? `<bcc><![CDATA[ ${headers.bcc} ]]></bcc>` : ''}
+  <message_id><![CDATA[ ${headers.messageId || ''} ]]></message_id>
+  <type>${contentType}</type>
+  ${tags.length > 0 ? `<tags><![CDATA[ ${tags.join(', ')} ]]></tags>` : ''}
+  <content><![CDATA[ ${content} ]]></content>
+</email>`;
+}
+
+/**
+ * Build an index of existing message IDs from XML files
+ */
+async function buildMessageIdIndex(outputDir: string): Promise<Set<string>> {
+  const messageIds = new Set<string>();
+  const parser = new xml2js.Parser();
+
+  // Recursive function to process directories
+  async function processDirectory(dirPath: string): Promise<void> {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+
+      if (entry.isDirectory()) {
+        await processDirectory(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith('.xml')) {
+        try {
+          const content = fs.readFileSync(fullPath, 'utf-8');
+          const result = await parser.parseStringPromise(content);
+
+          if (result.email && result.email.message_id && result.email.message_id[0]) {
+            const messageId = result.email.message_id[0].trim();
+            if (messageId) {
+              messageIds.add(messageId);
+            }
+          }
+        } catch (error) {
+          console.warn(`Warning: Could not parse ${fullPath}:`, error);
+        }
+      }
+    }
+  }
+
+  // Start processing from the output directory
+  await processDirectory(outputDir);
+  console.log(`Built index with ${messageIds.size} unique message IDs`);
+  return messageIds;
+}
+
+/**
+ * Check if email matches conditions defined in the config
+ */
+function matchesConditions(headers: EmailHeaders, conditions: MatchConditions): boolean {
+  // If From patterns are defined, check if email's From header matches any pattern
+  if (conditions.From && headers.from) {
+    for (const pattern of conditions.From) {
+      try {
+        const regex = new RegExp(pattern);
+        if (regex.test(headers.from)) {
+          return true;
+        }
+      } catch (error) {
+        console.warn(`Invalid regex pattern: ${pattern}`, error);
+      }
+    }
+  }
+
+  // If Subject patterns are defined, check if email's Subject header matches any pattern
+  if (conditions.Subject && headers.subject) {
+    for (const pattern of conditions.Subject) {
+      try {
+        const regex = new RegExp(pattern);
+        if (regex.test(headers.subject)) {
+          return true;
+        }
+      } catch (error) {
+        console.warn(`Invalid regex pattern: ${pattern}`, error);
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get matching tags for an email based on config
+ */
+function getMatchingTags(headers: EmailHeaders, tagsConfig?: Record<string, MatchConditions>): string[] {
+  const matchedTags: string[] = [];
+
+  if (!tagsConfig) return matchedTags;
+
+  for (const [tagName, conditions] of Object.entries(tagsConfig)) {
+    if (matchesConditions(headers, conditions)) {
+      matchedTags.push(tagName);
+    }
+  }
+
+  return matchedTags;
+}
+
+/**
+ * Process a single EML file and organize it by date.
+ */
+async function processEmlFile(
+  emlFilePath: string,
+  outputDir: string,
+  contentPriority: ContentPriority,
+  messageIdIndex: Set<string>,
+  tagsConfig?: Record<string, MatchConditions>
+): Promise<boolean> {
+  try {
+    // Read the EML file
+    const emlContent = fs.readFileSync(emlFilePath, { encoding: 'utf-8' });
+
+    // Parse the email
+    const parsed = await simpleParser(emlContent);
+
+    // Extract important headers
+    const headers = extractHeaders(parsed);
+
+    // Get the date from the email
+    const dateObj = parsed.date || new Date();
+
+    // Extract subject
+    const subject = headers.subject;
+    const safeSubject = sanitizeFilename(subject || '');
+
+    // Create directory structure
+    const yearDir = path.join(outputDir, dateObj.getFullYear().toString());
+    const monthDir = path.join(yearDir, `${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`);
+
+    // Ensure directories exist
+    if (!fs.existsSync(monthDir)) {
+      fs.mkdirSync(monthDir, { recursive: true });
+    }
+
+    // Create the new filename
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const hour = dateObj.getHours().toString().padStart(2, '0');
+    const minute = dateObj.getMinutes().toString().padStart(2, '0');
+    const baseFilename = `${day}-${hour}${minute}-${safeSubject}`;
+    const xmlFilename = `${baseFilename}.xml`;
+
+    let newPath = path.join(monthDir, xmlFilename);
+    let baseOutputPath = path.join(monthDir, baseFilename);
+
+    // If file already exists
+    let counter = 1;
+    const originalPath = newPath;
+    const originalBaseOutputPath = baseOutputPath;
+    while (fs.existsSync(newPath)) {
+      const parsedPath = path.parse(originalPath);
+      const newFilename = `${parsedPath.name}_${counter}${parsedPath.ext}`;
+      newPath = path.join(parsedPath.dir, newFilename);
+      baseOutputPath = path.join(path.dirname(originalBaseOutputPath), `${baseFilename}_${counter}`);
+      counter++;
+    }
+
+    // Determine content type and content
+    let emailContent: string;
+    let contentType: 'text' | 'html';
+
+    if (parsed.text && (!parsed.html || contentPriority === 'text')) {
+      emailContent = parsed.text;
+      contentType = 'text';
+    } else if (parsed.html) {
+      emailContent = parsed.html;
+      contentType = 'html';
+    } else {
+      emailContent = '';
+      contentType = 'text';
+    }
+
+    // Get matching tags
+    const matchedTags = getMatchingTags(headers, tagsConfig);
+
+    // Create XML content
+    const xmlContent = createEmailXml(headers, emailContent, contentType, matchedTags);
+
+    // Write XML file
+    fs.writeFileSync(newPath, xmlContent);
+    console.log(`Processed: ${path.basename(emlFilePath)} -> ${newPath}`);
+    if (matchedTags.length > 0) {
+      console.log(`  Tags applied: ${matchedTags.join(', ')}`);
+    }
+
+    // Save attachments if there are any
+    if (parsed.attachments && parsed.attachments.length > 0) {
+      await saveAttachments(
+        parsed.attachments,
+        baseOutputPath,
+        path.basename(baseOutputPath)
+      );
+    }
+
+    // Add to message ID index if processing was successful
+    if (headers.messageId) {
+      messageIdIndex.add(headers.messageId);
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error processing ${emlFilePath}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Load configuration from YAML file
+ */
+function loadConfig(configPath: string): Partial<Config> {
+  try {
+    if (fs.existsSync(configPath)) {
+      const configContent = fs.readFileSync(configPath, 'utf-8');
+      return loadYaml(configContent) as Partial<Config>;
+    }
+    return {};
+  } catch (error) {
+    console.warn(`Warning: Failed to load config from ${configPath}:`, error);
+    return {};
+  }
+}
+
+/**
+ * Main function to process all EML files in a directory.
+ */
+async function main() {
+  const program = new Command();
+
+  program
+    .option('-i, --input-dir <directory>', 'Directory containing EML files to process')
+    .option('-o, --output-dir <directory>', 'Directory to store organized EML files')
+    .option('-c, --config <file>', 'Path to configuration file', DEFAULT_CONFIG_PATH)
+    .option('-p, --priority <type>', 'Priority content type (text or html)', 'text')
+    .parse(process.argv);
+
+  const options = program.opts();
+
+  // Set content priority
+  const contentPriority: ContentPriority = (options.priority === 'html') ? 'html' : 'text';
+
+  // Load config from file
+  const configPath = options.config;
+  const fileConfig = loadConfig(configPath);
+
+  // Command line options take precedence over config file
+  const inputDir = options.inputDir || fileConfig.inputDir;
+  const outputDir = options.outputDir || fileConfig.outputDir;
+
+  // Validate required options
+  if (!inputDir) {
+    console.error('Input directory is required. Specify with --input-dir or in config file.');
+    process.exit(1);
+  }
+
+  if (!outputDir) {
+    console.error('Output directory is required. Specify with --output-dir or in config file.');
+    process.exit(1);
+  }
+
+  // Ensure input directory exists
+  if (!fs.existsSync(inputDir)) {
+    console.error(`Input directory does not exist: ${inputDir}`);
+    process.exit(1);
+  }
+
+  // Ensure output directory exists
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  // Build index of existing message IDs
+  console.log("Building index of existing message IDs...");
+  const messageIdIndex = await buildMessageIdIndex(outputDir);
+
+  // Compile regex patterns for From headers if they exist in config
+  const fromRegexPatterns: RegExp[] = [];
+  if (fileConfig.skip?.From && Array.isArray(fileConfig.skip.From)) {
+    for (const pattern of fileConfig.skip.From) {
+      try {
+        fromRegexPatterns.push(new RegExp(pattern));
+      } catch (error) {
+        console.warn(`Invalid regex pattern in config: ${pattern}`, error);
+      }
+    }
+  }
+
+  // Compile regex patterns for Subject headers if they exist in config
+  const subjectRegexPatterns: RegExp[] = [];
+  if (fileConfig.skip?.Subject && Array.isArray(fileConfig.skip.Subject)) {
+    for (const pattern of fileConfig.skip.Subject) {
+      try {
+        subjectRegexPatterns.push(new RegExp(pattern));
+      } catch (error) {
+        console.warn(`Invalid regex pattern in config: ${pattern}`, error);
+      }
+    }
+  }
+
+  // Process all EML files
+  let processed = 0;
+  let failed = 0;
+  let skipped = 0;
+  let skippedFromHeader = 0;
+  let skippedSubjectHeader = 0;
+  let taggedEmails = 0;
+
+  // Get all files in the input directory
+  const files = fs.readdirSync(inputDir);
+
+  // Process each EML file
+  for (const file of files) {
+    if (file.toLowerCase().endsWith('.eml')) {
+      const filePath = path.join(inputDir, file);
+
+      // Parse the email first to check headers against skip patterns
+      try {
+        const emlContent = fs.readFileSync(filePath, { encoding: 'utf-8' });
+        const parsed = await simpleParser(emlContent);
+        const headers = extractHeaders(parsed);
+
+        // Check if From header matches any of the skip patterns
+        let shouldSkip = false;
+        if (headers.from && fromRegexPatterns.length > 0) {
+          for (const regex of fromRegexPatterns) {
+            if (regex.test(headers.from)) {
+              console.log(`Skipping ${filePath}: From header "${headers.from}" matches pattern ${regex}`);
+              skippedFromHeader++;
+              shouldSkip = true;
+              break;
+            }
+          }
+        }
+
+        // Check if Subject header matches any of the skip patterns
+        if (!shouldSkip && headers.subject && subjectRegexPatterns.length > 0) {
+          for (const regex of subjectRegexPatterns) {
+            if (regex.test(headers.subject)) {
+              console.log(`Skipping ${filePath}: Subject header "${headers.subject}" matches pattern ${regex}`);
+              skippedSubjectHeader++;
+              shouldSkip = true;
+              break;
+            }
+          }
+        }
+
+        if (shouldSkip) {
+          skipped++;
+          continue;
+        }
+
+        // Check for duplicate message ID
+        if (headers.messageId && messageIdIndex.has(headers.messageId)) {
+          console.log(`Skipping ${filePath}: Message ID ${headers.messageId} already exists`);
+          skipped++;
+          continue;
+        }
+
+        // Process the email
+        const result = await processEmlFile(filePath, outputDir, contentPriority, messageIdIndex, fileConfig.tags);
+        if (result) {
+          processed++;
+
+          // Check if any tags were applied to this email
+          if (fileConfig.tags && Object.keys(fileConfig.tags).length > 0) {
+            const matchedTags = getMatchingTags(headers, fileConfig.tags);
+            if (matchedTags.length > 0) {
+              taggedEmails++;
+            }
+          }
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        console.error(`Error processing ${filePath}:`, error);
+        failed++;
+      }
+    }
+  }
+
+  console.log(`\nProcessing complete: ${processed} files organized as XML`);
+  if (taggedEmails > 0) {
+    console.log(`Applied tags to ${taggedEmails} emails`);
+  }
+  if (skipped > 0) {
+    console.log(`Skipped ${skipped} files total`);
+    if (skippedFromHeader > 0) {
+      console.log(`- ${skippedFromHeader} files skipped due to From header matches`);
+    }
+    if (skippedSubjectHeader > 0) {
+      console.log(`- ${skippedSubjectHeader} files skipped due to Subject header matches`);
+    }
+    console.log(`- ${skipped - skippedFromHeader - skippedSubjectHeader} files skipped due to duplicate message IDs`);
+  }
+  if (failed > 0) {
+    console.log(`Failed to process ${failed} files`);
+  }
+}
+
+// Run the script
+main().catch(error => {
+  console.error('Unhandled error:', error);
+  process.exit(1);
+});

@@ -1,0 +1,35 @@
+# Configuration file for CrudZap
+# This file provides default configuration options that can be overridden with command line arguments
+
+# Whether to perform a dry run (no writes)
+dryRun: false
+
+# Enable verbose logging
+verbose: false
+
+# Timezone for date operations
+timezone: "UTC"
+
+# Input directory for files to process
+inputDirectory: "./input"
+
+# Output directory for processed files
+outputDirectory: "./output" 
+
+filters: 
+  include:
+    subject:
+      - ".*"
+    to:
+      - ".*"
+    from:
+      - ".*"
+  exclude:
+    subject:
+      - "Student"
+    to:
+      - "Zark"
+    from:
+      - "Zark"
+
+  
