@@ -1,7 +1,7 @@
 import { EmailAddress, EmlContent } from '@vortiq/eml-parse-js';
 import { Connection, Context, createConnection, createDecision, createPhase, createPhaseNode, createTermination, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, Termination } from '@maxdrellin/xenocline';
 import { getLogger } from '../logging';
-import { Config as CrudzapConfig } from '../types';
+import { Config as ZanalyzeConfig } from '../types';
 import { CLASSIFY_PHASE_NODE_NAME, Input as ClassifyPhaseInput } from './classify';
 
 export const FILTER_PHASE_NAME = 'filter';
@@ -9,7 +9,7 @@ export const FILTER_PHASE_NODE_NAME = 'filter_node';
 export const FILTER_DECISION_NAME = 'filterDecision';
 
 
-export type Config = Pick<CrudzapConfig, 'filters'>;
+export type Config = Pick<ZanalyzeConfig, 'filters'>;
 
 export interface Input extends PhaseInput {
     eml: EmlContent;
@@ -49,27 +49,27 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
                 const toFilters = config.filters?.include.to?.map(to => new RegExp(to, 'i'));
                 const fromFilters = config.filters?.include.from?.map(from => new RegExp(from, 'i'));
 
-                if (subjectFilters && subjectFilters.some((filter: RegExp) => filter.test(input.eml.subject))) {
+                if (subjectFilters && input.eml.subject && subjectFilters.some((filter: RegExp) => filter.test(input.eml.subject))) {
                     logger.info(`Including email with subject: ${input.eml.subject}`);
                     include = true;
                 }
 
-                if (toFilters && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.email)))) {
+                if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.email)))) {
                     logger.info(`Including email with to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`);
                     include = true;
                 }
 
-                if (toFilters && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.name)))) {
+                if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.name)))) {
                     logger.info(`Including email with to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`);
                     include = true;
                 }
 
-                if (fromFilters && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.email)))) {
+                if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.email)))) {
                     logger.info(`Including email with from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`);
                     include = true;
                 }
 
-                if (fromFilters && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.name)))) {
+                if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.name)))) {
                     logger.info(`Including email with from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`);
                     include = true;
                 }
@@ -83,27 +83,27 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
                 const toFilters = config.filters?.exclude.to?.map(to => new RegExp(to, 'i'));
                 const fromFilters = config.filters?.exclude.from?.map(from => new RegExp(from, 'i'));
 
-                if (subjectFilters && subjectFilters.some((filter: RegExp) => filter.test(input.eml.subject))) {
+                if (subjectFilters && input.eml.subject && subjectFilters.some((filter: RegExp) => filter.test(input.eml.subject))) {
                     logger.info(`Filtering out email with subject: ${input.eml.subject}`);
                     include = false;
                 }
 
-                if (toFilters && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.email)))) {
+                if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.email)))) {
                     logger.info(`Filtering out email with to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`);
                     include = false;
                 }
 
-                if (toFilters && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.name)))) {
+                if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.name)))) {
                     logger.info(`Filtering out email with to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`);
                     include = false;
                 }
 
-                if (fromFilters && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.email)))) {
+                if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.email)))) {
                     logger.info(`Filtering out email with from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`);
                     include = false;
                 }
 
-                if (fromFilters && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.name)))) {
+                if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.name)))) {
                     logger.info(`Filtering out email with from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`);
                     include = false;
                 }

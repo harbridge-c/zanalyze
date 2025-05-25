@@ -20,7 +20,12 @@ taxonomy:
       - casual_conversations
       - invitations
       - updates
-
+    education:
+      - tuition_financial_aid
+      - academic_topics
+      - grades
+      - attendance
+      - school_announcements
   professional:
     work:
       - colleagues_clients

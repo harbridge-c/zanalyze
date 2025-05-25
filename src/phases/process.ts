@@ -7,6 +7,9 @@ import { CLASSIFY_PHASE_NODE_NAME, ClassifyPhaseNode, create as createClassifyNo
 import { FILTER_PHASE_NODE_NAME, FilterPhaseNode, create as createFilterNode } from './filter';
 import { LOCATE_PHASE_NODE_NAME, LocatePhaseNode, create as createLocateNode } from './locate';
 import { SIMPLIFY_PHASE_NODE_NAME, SimplifyPhaseNode, create as createSimplifyNode } from './simplify';
+import { EVENT_SENTRY_PHASE_NODE_NAME, EventSentryPhaseNode, create as createEventSentryNode } from './sentry/event';
+import { PERSON_SENTRY_PHASE_NODE_NAME, PersonSentryPhaseNode, create as createPersonSentryNode } from './sentry/person';
+import { SUMMARIZE_AGGREGATOR_NODE_NAME, SUMMARIZE_PHASE_NODE_NAME, SummarizePhaseNode, create as createSummarizeNode } from './summarize';
 
 export const PROCESS_NAME = 'Process';
 
@@ -20,6 +23,36 @@ export const ClassificationsSchema = z.array(ClassificationSchema);
 
 export type Classification = z.infer<typeof ClassificationSchema>;
 export type Classifications = z.infer<typeof ClassificationsSchema>;
+
+export const EventSchema = z.object({
+    name: z.string(),
+    date: z.string(),
+    time: z.string(),
+    eventType: z.enum(['appointment', 'deadline', 'meeting', 'other']),
+    dateType: z.enum(['exact', 'approximate', 'range']),
+    location: z.string(),
+    description: z.string(),
+    category: z.string(),
+    reason: z.string(),
+});
+
+export const EventsSchema = z.array(EventSchema);
+
+export type Event = z.infer<typeof EventSchema>;
+export type Events = z.infer<typeof EventsSchema>;
+
+export const PersonSchema = z.object({
+    name: z.string(),
+    role: z.string(),
+    category: z.enum(['family', 'friend', 'work', 'project', 'other']),
+    reason: z.string(),
+});
+
+export const PeopleSchema = z.array(PersonSchema);
+
+export type Person = z.infer<typeof PersonSchema>;
+export type People = z.infer<typeof PeopleSchema>;
+
 
 export interface Context extends ProcessContext {
     //  These are the values that are created by the Create phase
@@ -39,6 +72,8 @@ export interface Context extends ProcessContext {
 
     // These are created by the classify phase
     classifications?: Classifications;
+    events?: Events;
+    people?: People;
 
 }
 
@@ -54,6 +89,9 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
     const simplifyNode: SimplifyPhaseNode = await createSimplifyNode(config);
     const filterNode: FilterPhaseNode = await createFilterNode(config);
     const classifyNode: ClassifyPhaseNode = await createClassifyNode(config);
+    const eventSentryNode: EventSentryPhaseNode = await createEventSentryNode(config);
+    const personSentryNode: PersonSentryPhaseNode = await createPersonSentryNode(config);
+    const [summarizeAggregatorNode, summarizeNode] = await createSummarizeNode(config);
 
     const process: Process = createProcess(PROCESS_NAME, {
         phases: {
@@ -61,6 +99,10 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
             [SIMPLIFY_PHASE_NODE_NAME]: simplifyNode,
             [FILTER_PHASE_NODE_NAME]: filterNode,
             [CLASSIFY_PHASE_NODE_NAME]: classifyNode,
+            [EVENT_SENTRY_PHASE_NODE_NAME]: eventSentryNode,
+            [PERSON_SENTRY_PHASE_NODE_NAME]: personSentryNode,
+            [SUMMARIZE_AGGREGATOR_NODE_NAME]: summarizeAggregatorNode,
+            [SUMMARIZE_PHASE_NODE_NAME]: summarizeNode,
         } as any,
     });
 

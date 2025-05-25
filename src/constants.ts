@@ -1,7 +1,7 @@
 import { FilenameOption, FilesystemStructure } from "@theunwalked/dreadcabinet";
 import { Config, FiltersConfig, SimplifyConfig } from "./types";
 export const VERSION = '__VERSION__ (__GIT_BRANCH__/__GIT_COMMIT__ __GIT_TAGS__ __GIT_COMMIT_DATE__) __SYSTEM_INFO__';
-export const PROGRAM_NAME = 'crudzap';
+export const PROGRAM_NAME = 'zanalyze';
 export const DEFAULT_CHARACTER_ENCODING = 'utf-8';
 export const DEFAULT_BINARY_TO_TEXT_ENCODING = 'base64';
 export const DEFAULT_CONFIGURATION_DIRECTORY = `.${PROGRAM_NAME}`;
@@ -76,7 +76,7 @@ export const DEFAULT_SIMPLIFY: SimplifyConfig = {
     skipAttachments: true,
 };
 
-export const CRUDZAP_DEFAULTS: Config = {
+export const ZANALYZE_DEFAULTS: Config = {
     model: DEFAULT_MODEL,
     verbose: DEFAULT_VERBOSE,
     debug: DEFAULT_DEBUG,
@@ -91,12 +91,18 @@ export const DEFAULT_PERSONAS_DIR = `/personas`;
 
 export const DEFAULT_PERSONA_YOU_FILE = `${DEFAULT_PERSONAS_DIR}/you.md`;
 export const DEFAULT_PERSONA_CLASSIFIER_FILE = `${DEFAULT_PERSONAS_DIR}/classifier.md`;
+export const DEFAULT_PERSONA_EVENT_SENTRY_FILE = `${DEFAULT_PERSONAS_DIR}/event_sentry.md`;
+export const DEFAULT_PERSONA_PERSON_SENTRY_FILE = `${DEFAULT_PERSONAS_DIR}/person_sentry.md`;
 export const DEFAULT_PERSONA_TRANSCRIBE_FILE = `${DEFAULT_PERSONAS_DIR}/transcribe.md`;
+export const DEFAULT_PERSONA_SUMMARIZE_FILE = `${DEFAULT_PERSONAS_DIR}/summarize.md`;
 
 export const DEFAULT_INSTRUCTIONS_DIR = `/instructions`;
 
 export const DEFAULT_TYPE_INSTRUCTIONS_DIR = `${DEFAULT_INSTRUCTIONS_DIR}/types`;
 
 export const DEFAULT_INSTRUCTIONS_CLASSIFY_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/classify.md`;
+export const DEFAULT_INSTRUCTIONS_EVENT_SENTRY_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/event_sentry.md`;
+export const DEFAULT_INSTRUCTIONS_PERSON_SENTRY_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/person_sentry.md`;
 export const DEFAULT_INSTRUCTIONS_COMPOSE_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/compose.md`;
 export const DEFAULT_INSTRUCTIONS_TRANSCRIBE_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/transcribe.md`;
+export const DEFAULT_INSTRUCTIONS_SUMMARIZE_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/summarize.md`;

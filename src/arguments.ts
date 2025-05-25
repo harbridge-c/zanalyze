@@ -1,7 +1,7 @@
 import * as DreadCabinet from "@theunwalked/dreadcabinet";
 import * as CardiganTime from '@theunwalked/cardigantime';
 import { Command } from "commander";
-import { ALLOWED_MODELS, CRUDZAP_DEFAULTS, DEFAULT_CONTEXT_DIRECTORY, DEFAULT_DEBUG, DEFAULT_DRY_RUN, DEFAULT_MODEL, DEFAULT_REPLACE, DEFAULT_SILLY, DEFAULT_VERBOSE, PROGRAM_NAME, VERSION } from "./constants";
+import { ALLOWED_MODELS, ZANALYZE_DEFAULTS, DEFAULT_CONTEXT_DIRECTORY, DEFAULT_DEBUG, DEFAULT_DRY_RUN, DEFAULT_MODEL, DEFAULT_REPLACE, DEFAULT_SILLY, DEFAULT_VERBOSE, PROGRAM_NAME, VERSION } from "./constants";
 import { getLogger, setLogLevel } from "./logging";
 import { Args, CombinedArgs, Config, DateRange, JobArgs, JobConfig } from "./types";
 import * as Dates from "./util/dates";
@@ -33,6 +33,8 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
         .version(VERSION);
 
     await dreadcabinet.configure(program);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     program = await cardigantime.configure(program);
     program.parse();
 
@@ -83,15 +85,15 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
     // Read the Raw values from the dreadcabinet Command Line Arguments
     const dreadcabinetValues = await dreadcabinet.read(cliArgs);
 
-    let crudzapConfig: Config = deepmerge(
-        CRUDZAP_DEFAULTS,
+    let zanalyzeConfig: Config = deepmerge(
+        ZANALYZE_DEFAULTS,
         fileValues,   // Apply file values (overwrites defaults)
         dreadcabinetValues,
         clean(cliArgs) // Apply all CLI args last (highest precedence)
     ) as Config;
-    await validateCrudzapConfig(crudzapConfig);
-    logger.debug('Crudzap config: %s',
-        '\n\n' + JSON.stringify(crudzapConfig, null, 2).replace(/^/gm, '    ') + '\n\n');
+    await validateZanalyzeConfig(zanalyzeConfig);
+    logger.debug('Zanalyze config: %s',
+        '\n\n' + JSON.stringify(zanalyzeConfig, null, 2).replace(/^/gm, '    ') + '\n\n');
 
     const jobConfig: JobConfig = {
         ...clean(cliJobArgs),
@@ -100,10 +102,10 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
     logger.debug('Job config: %s',
         '\n\n' + JSON.stringify(jobConfig, null, 2).replace(/^/gm, '    ') + '\n\n');
 
-    crudzapConfig = dreadcabinet.applyDefaults(crudzapConfig) as Config;
+    zanalyzeConfig = dreadcabinet.applyDefaults(zanalyzeConfig) as Config;
 
     const dateRange: DateRange = createDateRange({
-        timezone: crudzapConfig.timezone,
+        timezone: zanalyzeConfig.timezone,
         currentMonth: jobConfig.currentMonth ?? false,
         start: jobConfig.start ? new Date(jobConfig.start) : undefined,
         end: jobConfig.end ? new Date(jobConfig.end) : undefined
@@ -111,7 +113,7 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
     logger.debug('Date range: %s',
         '\n\n' + JSON.stringify(dateRange, null, 2).replace(/^/gm, '    ') + '\n\n');
 
-    return [crudzapConfig, dateRange];
+    return [zanalyzeConfig, dateRange];
 }
 
 export const validateJobConfig = async (jobConfig: JobConfig) => {
@@ -131,7 +133,7 @@ export const validateJobConfig = async (jobConfig: JobConfig) => {
     }
 }
 
-async function validateCrudzapConfig(
+async function validateZanalyzeConfig(
     config: Config
 ): Promise<void> {
 

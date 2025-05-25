@@ -5,7 +5,7 @@
     "main": "dist/main.js",
     "type": "module",
     "bin": {
-        "crudzap": "./dist/main.js"
+        "zanalyze": "./dist/main.js"
     },
     "repository": {
         "type": "git",

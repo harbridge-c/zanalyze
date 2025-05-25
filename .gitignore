@@ -10,5 +10,5 @@ exports/
 test/
 output/
 input/
-.crudzap/
+.zanalyze/
 pnpm-workspace.yaml
