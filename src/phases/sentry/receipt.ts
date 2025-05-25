@@ -12,11 +12,11 @@ import { Config as ZanalyzeConfig } from '../../types';
 import { stringifyJSON } from '../../util/general';
 import * as OpenAI from '../../util/openai';
 import * as Storage from '../../util/storage';
-import { Classifications, Context, Events, EventsSchema } from '../process';
+import { Classifications, Context, Transactions, TransactionsSchema } from '../process';
 import { SENTRY_AGGREGATOR_NODE_NAME } from './aggregator';
 
-export const EVENT_SENTRY_PHASE_NAME = 'event_sentry';
-export const EVENT_SENTRY_PHASE_NODE_NAME = 'event_sentry_node';
+export const RECEIPT_SENTRY_PHASE_NAME = 'receipt_sentry';
+export const RECEIPT_SENTRY_PHASE_NODE_NAME = 'receipt_sentry_node';
 
 export interface Input extends PhaseInput {
     eml: EmlContent;
@@ -29,21 +29,21 @@ export interface Input extends PhaseInput {
 };
 
 export interface Output extends PhaseOutput {
-    events: Events;
+    transactions: Transactions;
 };
 
 // Helper function to promisi   fy ffmpeg.
-export interface EventSentryPhase extends Phase<Input, Output> {
+export interface ReceiptSentryPhase extends Phase<Input, Output> {
     execute: (input: Input) => Promise<Output>;
 }
 
-export interface EventSentryPhaseNode extends PhaseNode<Input, Output> {
-    phase: EventSentryPhase;
+export interface ReceiptSentryPhaseNode extends PhaseNode<Input, Output> {
+    phase: ReceiptSentryPhase;
 }
 
 export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>;
 
-export const create = async (config: Config): Promise<EventSentryPhaseNode> => {
+export const create = async (config: Config): Promise<ReceiptSentryPhaseNode> => {
     const logger = getLogger();
 
     const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
@@ -56,18 +56,18 @@ export const create = async (config: Config): Promise<EventSentryPhaseNode> => {
             throw new Error("eml is required for filter function");
         }
 
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'event_schema_response')}.json`);
+        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'transaction_schema_response')}.json`);
 
-        const prompt = await prompts.createEventSentryPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.classifications);
+        const prompt = await prompts.createReceiptSentryPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.classifications);
         // Generate classification prompt using the transcription text
         const formatter = Formatter.create({ logger });
         const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'event_schema_request')}.json`);
+        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'transaction_schema_request')}.json`);
 
         await storage.writeFile(requestDetailFile, JSON.stringify(chatRequest, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
-            responseFormat: zodResponseFormat(z.object({ events: EventsSchema }), 'events'),
+            responseFormat: zodResponseFormat(z.object({ transactions: TransactionsSchema }), 'transactions'),
             model: config.classifyModel,
             debug: config.debug,
             debugFile: responseDetailFile,
@@ -78,8 +78,8 @@ export const create = async (config: Config): Promise<EventSentryPhaseNode> => {
         return contextCompletion;
     }
 
-    const eventSentryPhase = createPhase(
-        EVENT_SENTRY_PHASE_NAME,
+    const receiptSentryPhase = createPhase(
+        RECEIPT_SENTRY_PHASE_NAME,
         {
             execute,
         }
@@ -98,12 +98,12 @@ export const create = async (config: Config): Promise<EventSentryPhaseNode> => {
     };
 
     return createPhaseNode(
-        EVENT_SENTRY_PHASE_NODE_NAME,
-        eventSentryPhase,
+        RECEIPT_SENTRY_PHASE_NODE_NAME,
+        receiptSentryPhase,
         {
             next: createConnections(),
         }
-    ) as EventSentryPhaseNode;
+    ) as ReceiptSentryPhaseNode;
 }
 
 

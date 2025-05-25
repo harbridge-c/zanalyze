@@ -13,7 +13,7 @@ import { stringifyJSON } from '../../util/general';
 import * as OpenAI from '../../util/openai';
 import * as Storage from '../../util/storage';
 import { Classifications, Context, People, PeopleSchema } from '../process';
-import { SUMMARIZE_AGGREGATOR_NODE_NAME } from '../summarize';
+import { SENTRY_AGGREGATOR_NODE_NAME } from './aggregator';
 
 export const PERSON_SENTRY_PHASE_NAME = 'person_sentry';
 export const PERSON_SENTRY_PHASE_NODE_NAME = 'person_sentry_node';
@@ -94,7 +94,7 @@ export const create = async (config: Config): Promise<PersonSentryPhaseNode> => 
             };
             return [input, input as Context];
         };
-        return [createConnection('toSummarize', SUMMARIZE_AGGREGATOR_NODE_NAME, { transform })] as const;
+        return [createConnection('toSummarize', SENTRY_AGGREGATOR_NODE_NAME, { transform })] as const;
     };
 
     return createPhaseNode(

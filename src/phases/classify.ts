@@ -15,6 +15,7 @@ import * as Storage from '../util/storage';
 import { ClassificationsSchema } from './process';
 import { EVENT_SENTRY_PHASE_NODE_NAME } from './sentry/event';
 import { PERSON_SENTRY_PHASE_NODE_NAME } from './sentry/person';
+import { RECEIPT_SENTRY_PHASE_NODE_NAME } from './sentry/receipt';
 
 export const CLASSIFY_PHASE_NAME = 'classify';
 export const CLASSIFY_PHASE_NODE_NAME = 'classify_node';
@@ -96,8 +97,9 @@ export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
 
         const toEventSentry = createConnection('toEventSentry', EVENT_SENTRY_PHASE_NODE_NAME, { transform });
         const toPersonSentry = createConnection('toPersonSentry', PERSON_SENTRY_PHASE_NODE_NAME, { transform });
+        const toReceiptSentry = createConnection('toReceiptSentry', RECEIPT_SENTRY_PHASE_NODE_NAME, { transform });
 
-        const connections: Connection<Output, Context>[] = [toEventSentry, toPersonSentry];
+        const connections: Connection<Output, Context>[] = [toEventSentry, toPersonSentry, toReceiptSentry];
 
         return connections;
     }

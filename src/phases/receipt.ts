@@ -12,13 +12,11 @@ import { Config as ZanalyzeConfig } from '../types';
 import { stringifyJSON } from '../util/general';
 import * as OpenAI from '../util/openai';
 import * as Storage from '../util/storage';
-import { Classifications, Events, People } from './process';
+import { Classifications, Events, People, Transactions } from './process';
 
 
-export const SUMMARIZE_PHASE_NAME = 'summarize';
-export const SUMMARIZE_PHASE_NODE_NAME = 'summarize_node';
-export const SUMMARIZE_AGGREGATOR_NAME = 'summarize_aggregator';
-export const SUMMARIZE_AGGREGATOR_NODE_NAME = 'summarize_aggregator_node';
+export const RECEIPT_PHASE_NAME = 'receipt';
+export const RECEIPT_PHASE_NODE_NAME = 'receipt_node';
 
 export interface Input extends PhaseInput {
     eml: EmlContent;
@@ -30,18 +28,19 @@ export interface Input extends PhaseInput {
     classifications: Classifications;
     events: Events;
     people: People;
+    transactions: Transactions;
 };
 
 export interface Output extends PhaseOutput {
     summary: string;
 };
 
-export interface SummarizePhase extends Phase<Input, Output> {
+export interface ReceiptPhase extends Phase<Input, Output> {
     execute: (input: Input) => Promise<Output>;
 }
 
-export interface SummarizePhaseNode extends PhaseNode<Input, Output> {
-    phase: SummarizePhase;
+export interface ReceiptPhaseNode extends PhaseNode<Input, Output> {
+    phase: ReceiptPhase;
 }
 
 export interface SummarizeAggregator extends Aggregator {
@@ -54,7 +53,7 @@ export interface SummarizeAggregatorNode extends AggregatorNode<PhaseOutput, Con
 
 export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>;
 
-export const create = async (config: Config): Promise<SummarizePhaseNode> => {
+export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
     const logger = getLogger();
 
     const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
@@ -79,48 +78,52 @@ export const create = async (config: Config): Promise<SummarizePhaseNode> => {
             logger.error('classifications is required for summarize function');
             throw new Error("classifications is required for summarize function");
         }
+        if (!input.transactions) {
+            logger.error('transactions is required for summarize function');
+            throw new Error("transactions is required for summarize function");
+        }
 
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'summarize_response')}.json`);
+        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'receipt_response')}.json`);
 
-        const prompt = await prompts.createSummarizePrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.events, input.people, input.classifications);
+        const prompt = await prompts.createReceiptPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.events, input.people, input.classifications, input.transactions);
         const formatter = Formatter.create({ logger });
         const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'summarize_request')}.json`);
+        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'receipt_request')}.json`);
 
         await storage.writeFile(requestDetailFile, JSON.stringify(chatRequest, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         // The summary is a string, so we expect { summary: string }
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
-            responseFormat: zodResponseFormat(z.object({ summary: z.string() }), 'summary'),
+            responseFormat: zodResponseFormat(z.object({ receipt: z.string() }), 'receipt'),
             model: config.classifyModel,
             debug: config.debug,
             debugFile: responseDetailFile,
         });
 
-        logger.debug('Summary Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
+        logger.debug('Receipt Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
 
-        // Write summary to markdown file in output directory
-        const summaryFilename = input.filename.replace(/output(\.[^.]*)?$/, 'summary.md');
-        const summaryFilePath = path.join(input.outputPath, summaryFilename);
-        await storage.writeFile(summaryFilePath, contextCompletion.summary, DEFAULT_CHARACTER_ENCODING);
+        // Write receipt to markdown file in output directory
+        const receiptFilename = input.filename.replace(/output(\.[^.]*)?$/, 'receipt.md');
+        const receiptFilePath = path.join(input.outputPath, receiptFilename);
+        await storage.writeFile(receiptFilePath, contextCompletion.receipt, DEFAULT_CHARACTER_ENCODING);
 
         return contextCompletion;
     }
 
-    const summarizePhase = createPhase(
-        SUMMARIZE_PHASE_NAME,
+    const receiptPhase = createPhase(
+        RECEIPT_PHASE_NAME,
         {
             execute,
         }
     );
 
     // No next connections by default; will be connected from event/person sentry
-    const summarizePhaseNode = createPhaseNode(
-        SUMMARIZE_PHASE_NODE_NAME,
-        summarizePhase
-    ) as SummarizePhaseNode;
+    const receiptPhaseNode = createPhaseNode(
+        RECEIPT_PHASE_NODE_NAME,
+        receiptPhase
+    ) as ReceiptPhaseNode;
 
-    return summarizePhaseNode;
+    return receiptPhaseNode;
 }
 
 
