@@ -16,6 +16,8 @@ import { ClassificationsSchema } from './process';
 import { EVENT_SENTRY_PHASE_NODE_NAME } from './sentry/event';
 import { PERSON_SENTRY_PHASE_NODE_NAME } from './sentry/person';
 import { RECEIPT_SENTRY_PHASE_NODE_NAME } from './sentry/receipt';
+import { BILL_SENTRY_PHASE_NODE_NAME } from './sentry/bill';
+import { Classifications } from './process';
 
 export const CLASSIFY_PHASE_NAME = 'classify';
 export const CLASSIFY_PHASE_NODE_NAME = 'classify_node';
@@ -30,7 +32,7 @@ export interface Input extends PhaseInput {
 };
 
 export interface Output extends PhaseOutput {
-    classifications: string;
+    classifications: Classifications;
 };
 
 // Helper function to promisi   fy ffmpeg.
@@ -59,22 +61,36 @@ export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
 
         const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'classify_response')}.json`);
 
+        // If the response file exists, read and return its contents
+        if (await storage.exists(responseDetailFile)) {
+            const fileContents = await storage.readFile(responseDetailFile, DEFAULT_CHARACTER_ENCODING);
+            let parsed: any;
+            try {
+                parsed = JSON.parse(fileContents);
+            } catch (err) {
+                throw new Error(`Failed to parse cached classify_response: ${err}`);
+            }
+            // Validate using zod
+            const schema = z.object({ classifications: ClassificationsSchema });
+            const result = schema.safeParse(parsed);
+            if (!result.success) {
+                throw new Error(`Cached classify_response failed validation: ${result.error}`);
+            }
+            return result.data;
+        }
+
         const prompt = await prompts.createClassificationPrompt(input.eml.text || input.eml.html || '', input.eml.headers);
         // Generate classification prompt using the transcription text
         const formatter = Formatter.create({ logger });
         const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'classify_request')}.json`);
-
-        await storage.writeFile(requestDetailFile, JSON.stringify(chatRequest, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
             responseFormat: zodResponseFormat(z.object({ classifications: ClassificationsSchema }), 'classifications'),
             model: config.classifyModel,
-            debug: config.debug,
-            debugFile: responseDetailFile,
         });
 
         logger.debug('Context Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
+        await storage.writeFile(responseDetailFile, JSON.stringify(contextCompletion, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         return contextCompletion;
     }
@@ -98,8 +114,9 @@ export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
         const toEventSentry = createConnection('toEventSentry', EVENT_SENTRY_PHASE_NODE_NAME, { transform });
         const toPersonSentry = createConnection('toPersonSentry', PERSON_SENTRY_PHASE_NODE_NAME, { transform });
         const toReceiptSentry = createConnection('toReceiptSentry', RECEIPT_SENTRY_PHASE_NODE_NAME, { transform });
+        const toBillSentry = createConnection('toBillSentry', BILL_SENTRY_PHASE_NODE_NAME, { transform });
 
-        const connections: Connection<Output, Context>[] = [toEventSentry, toPersonSentry, toReceiptSentry];
+        const connections: Connection<Output, Context>[] = [toEventSentry, toPersonSentry, toReceiptSentry, toBillSentry];
 
         return connections;
     }

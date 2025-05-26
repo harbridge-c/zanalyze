@@ -4,7 +4,8 @@ import { RECEIPT_PHASE_NODE_NAME } from '../receipt';
 import { SUMMARIZE_PHASE_NODE_NAME } from '../summarize';
 import { getLogger } from '../../logging';
 import { Config as ZanalyzeConfig } from '../../types';
-import { Classifications, Events, People, Transactions } from '../process';
+import { Bills, Classifications, Events, People, Transactions } from '../process';
+import { BILL_PHASE_NODE_NAME } from '../bill';
 
 
 export const SENTRY_AGGREGATOR_NAME = 'sentry_aggregator';
@@ -22,6 +23,7 @@ export interface Input extends PhaseInput {
     events: Events;
     people: People;
     transactions: Transactions;
+    bills: Bills;
 };
 
 export interface Output extends PhaseOutput {
@@ -35,6 +37,7 @@ export interface Output extends PhaseOutput {
     events: Events;
     people: People;
     transactions: Transactions;
+    bills: Bills;
 };
 
 export interface SentryAggregator extends Aggregator<Output, Context> {
@@ -66,7 +69,7 @@ export const create = async (): Promise<SentryAggregatorNode> => {
             status: 'NotYetReady',
         };
 
-        if (output.events && output.people && output.classifications && output.transactions) {
+        if (output.events && output.people && output.classifications && output.transactions && output.bills) {
             result = {
                 status: 'Ready',
                 output: output,
@@ -94,8 +97,11 @@ export const create = async (): Promise<SentryAggregatorNode> => {
 
         const toReceipt = createConnection('toReceipt', RECEIPT_PHASE_NODE_NAME);
         const toSummarize = createConnection('toSummarize', SUMMARIZE_PHASE_NODE_NAME);
+        const toBill = createConnection('toBill', BILL_PHASE_NODE_NAME);
 
-        if (fullContext.transactions.length > 0) {
+        if (fullContext.bills.length > 0) {
+            return [toBill];
+        } else if (fullContext.transactions.length > 0) {
             return [toReceipt];
         } else {
             return [toSummarize];

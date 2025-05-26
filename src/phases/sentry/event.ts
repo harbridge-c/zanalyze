@@ -58,22 +58,36 @@ export const create = async (config: Config): Promise<EventSentryPhaseNode> => {
 
         const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'event_schema_response')}.json`);
 
+        // If the response file exists, read and return its contents
+        if (await storage.exists(responseDetailFile)) {
+            const fileContents = await storage.readFile(responseDetailFile, DEFAULT_CHARACTER_ENCODING);
+            let parsed: any;
+            try {
+                parsed = JSON.parse(fileContents);
+            } catch (err) {
+                throw new Error(`Failed to parse cached event_schema_response: ${err}`);
+            }
+            // Validate using zod
+            const schema = z.object({ events: EventsSchema });
+            const result = schema.safeParse(parsed);
+            if (!result.success) {
+                throw new Error(`Cached event_schema_response failed validation: ${result.error}`);
+            }
+            return result.data;
+        }
+
         const prompt = await prompts.createEventSentryPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.classifications);
         // Generate classification prompt using the transcription text
         const formatter = Formatter.create({ logger });
         const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'event_schema_request')}.json`);
-
-        await storage.writeFile(requestDetailFile, JSON.stringify(chatRequest, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
             responseFormat: zodResponseFormat(z.object({ events: EventsSchema }), 'events'),
             model: config.classifyModel,
-            debug: config.debug,
-            debugFile: responseDetailFile,
         });
 
         logger.debug('Context Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
+        await storage.writeFile(responseDetailFile, JSON.stringify(contextCompletion, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         return contextCompletion;
     }

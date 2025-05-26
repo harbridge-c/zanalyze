@@ -13,6 +13,8 @@ import { PERSON_SENTRY_PHASE_NODE_NAME, PersonSentryPhaseNode, create as createP
 import { RECEIPT_SENTRY_PHASE_NODE_NAME, ReceiptSentryPhaseNode, create as createReceiptSentryNode } from './sentry/receipt';
 import { SIMPLIFY_PHASE_NODE_NAME, SimplifyPhaseNode, create as createSimplifyNode } from './simplify';
 import { SUMMARIZE_PHASE_NODE_NAME, SummarizePhaseNode, create as createSummarizeNode } from './summarize';
+import { BILL_SENTRY_PHASE_NODE_NAME, BillSentryPhaseNode, create as createBillSentryNode } from './sentry/bill';
+import { BILL_PHASE_NODE_NAME, BillPhaseNode, create as createBillNode } from './bill';
 
 export const PROCESS_NAME = 'Process';
 
@@ -74,6 +76,22 @@ export const TransactionsSchema = z.array(TransactionSchema);
 export type Transaction = z.infer<typeof TransactionSchema>;
 export type Transactions = z.infer<typeof TransactionsSchema>;
 
+export const BillSchema = z.object({
+    provider: z.string(),
+    kind: z.enum(['utility', 'insurance', 'loan', 'rent', 'subscription', 'other']),
+    amount_due: z.number(),
+    due_date: z.string(),
+    period: z.string(),
+    status: z.enum(['due', 'paid', 'overdue', 'other']),
+    description: z.string(),
+    reason: z.string(),
+});
+
+export const BillsSchema = z.array(BillSchema);
+
+export type Bill = z.infer<typeof BillSchema>;
+export type Bills = z.infer<typeof BillsSchema>;
+
 export interface Context extends ProcessContext {
     //  These are the values that are created by the Create phase
     file?: string;
@@ -94,6 +112,8 @@ export interface Context extends ProcessContext {
     classifications?: Classifications;
     events?: Events;
     people?: People;
+    bills?: Bills;
+    transactions?: Transactions;
 
 }
 
@@ -115,6 +135,8 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
     const summarizeNode: SummarizePhaseNode = await createSummarizeNode(config);
     const receiptNode: ReceiptPhaseNode = await createReceiptNode(config);
     const sentryAggregatorNode: SentryAggregatorNode = await createSentryAggregatorNode();
+    const billSentryNode: BillSentryPhaseNode = await createBillSentryNode(config);
+    const billNode: BillPhaseNode = await createBillNode(config);
 
 
     const process: Process = createProcess(PROCESS_NAME, {
@@ -129,6 +151,8 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
             [SENTRY_AGGREGATOR_NODE_NAME]: sentryAggregatorNode,
             [RECEIPT_PHASE_NODE_NAME]: receiptNode,
             [SUMMARIZE_PHASE_NODE_NAME]: summarizeNode,
+            [BILL_SENTRY_PHASE_NODE_NAME]: billSentryNode,
+            [BILL_PHASE_NODE_NAME]: billNode,
         } as any,
     });
 

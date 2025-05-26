@@ -80,28 +80,29 @@ export const create = async (config: Config): Promise<SummarizePhaseNode> => {
             throw new Error("classifications is required for summarize function");
         }
 
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'summarize_response')}.json`);
+        // Write summary to markdown file in output directory
+        const summaryFilename = input.filename.replace(/output(\.[^.]*)?$/, 'summary.md');
+        const summaryFilePath = path.join(input.outputPath, summaryFilename);
+
+        // Check if summary file already exists
+        if (await storage.exists(summaryFilePath)) {
+            logger.debug('Summary file already exists, skipping generation: %s', summaryFilePath);
+            const existingSummary = await storage.readFile(summaryFilePath, DEFAULT_CHARACTER_ENCODING);
+            return { summary: existingSummary };
+        }
 
         const prompt = await prompts.createSummarizePrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.events, input.people, input.classifications);
         const formatter = Formatter.create({ logger });
         const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'summarize_request')}.json`);
-
-        await storage.writeFile(requestDetailFile, JSON.stringify(chatRequest, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         // The summary is a string, so we expect { summary: string }
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
             responseFormat: zodResponseFormat(z.object({ summary: z.string() }), 'summary'),
             model: config.classifyModel,
-            debug: config.debug,
-            debugFile: responseDetailFile,
         });
 
         logger.debug('Summary Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
 
-        // Write summary to markdown file in output directory
-        const summaryFilename = input.filename.replace(/output(\.[^.]*)?$/, 'summary.md');
-        const summaryFilePath = path.join(input.outputPath, summaryFilename);
         await storage.writeFile(summaryFilePath, contextCompletion.summary, DEFAULT_CHARACTER_ENCODING);
 
         return contextCompletion;

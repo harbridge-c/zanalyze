@@ -1,0 +1,1 @@
+You are a summarizer of receipts

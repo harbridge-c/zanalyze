@@ -83,28 +83,31 @@ export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
             throw new Error("transactions is required for summarize function");
         }
 
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'receipt_response')}.json`);
+        // Write receipt to markdown file in output directory
+        const receiptFilename = input.filename.replace(/output(\.[^.]*)?$/, 'receipt.md');
+        const receiptsDir = path.join(input.outputPath, 'receipts');
+        await storage.createDirectory(receiptsDir);
+        const receiptFilePath = path.join(receiptsDir, receiptFilename);
+
+        // Check if receipt file already exists
+        if (await storage.exists(receiptFilePath)) {
+            logger.debug('Receipt file already exists, skipping generation: %s', receiptFilePath);
+            const existingReceipt = await storage.readFile(receiptFilePath, DEFAULT_CHARACTER_ENCODING);
+            return { summary: existingReceipt };
+        }
 
         const prompt = await prompts.createReceiptPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.events, input.people, input.classifications, input.transactions);
         const formatter = Formatter.create({ logger });
         const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-        const requestDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'receipt_request')}.json`);
-
-        await storage.writeFile(requestDetailFile, JSON.stringify(chatRequest, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         // The summary is a string, so we expect { summary: string }
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
             responseFormat: zodResponseFormat(z.object({ receipt: z.string() }), 'receipt'),
             model: config.classifyModel,
-            debug: config.debug,
-            debugFile: responseDetailFile,
         });
 
         logger.debug('Receipt Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
 
-        // Write receipt to markdown file in output directory
-        const receiptFilename = input.filename.replace(/output(\.[^.]*)?$/, 'receipt.md');
-        const receiptFilePath = path.join(input.outputPath, receiptFilename);
         await storage.writeFile(receiptFilePath, contextCompletion.receipt, DEFAULT_CHARACTER_ENCODING);
 
         return contextCompletion;

@@ -1,7 +1,7 @@
 Given the content of an email containing transaction details, extract structured information and summarize it precisely following this template:
 
 ```
-### Transaction: [merchant_organization]
+### Receipt from [merchant_organization]
 
 From: [email address of the sender]
 Subject: [subject of the email]
@@ -9,6 +9,9 @@ Date: [date and time the email was received]
 Type: [Type of the transaction]
 Amount: [transaction amount formatted as currency, e.g., $0.00]
 Status: [status of the transation]
+
+Description: [brief summary of the bill’s purpose]  
+Reason: [explanation for how the fields were determined]  
 ```
 
 If this is a bill for something, I'd like you to also add the "Due Date:" if that is specified.

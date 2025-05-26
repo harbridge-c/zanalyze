@@ -110,7 +110,7 @@ export async function main() {
             logger.info(`Processing file: ${file}`);
             await processor.process(file);
             return;
-        }, { start: dateRange.start, end: dateRange.end });
+        }, { start: dateRange.start, end: dateRange.end }, 3);
 
         logger.info('Processing complete (Placeholder - dreadcabinet operator not yet used).');
         // --- End dreadcabinet Operation ---

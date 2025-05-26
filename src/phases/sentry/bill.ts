@@ -12,11 +12,11 @@ import { Config as ZanalyzeConfig } from '../../types';
 import { stringifyJSON } from '../../util/general';
 import * as OpenAI from '../../util/openai';
 import * as Storage from '../../util/storage';
-import { Classifications, Context, Transactions, TransactionsSchema } from '../process';
+import { Bill, BillsSchema, Classifications, Context } from '../process';
 import { SENTRY_AGGREGATOR_NODE_NAME } from './aggregator';
 
-export const RECEIPT_SENTRY_PHASE_NAME = 'receipt_sentry';
-export const RECEIPT_SENTRY_PHASE_NODE_NAME = 'receipt_sentry_node';
+export const BILL_SENTRY_PHASE_NAME = 'bill_sentry';
+export const BILL_SENTRY_PHASE_NODE_NAME = 'bill_sentry_node';
 
 export interface Input extends PhaseInput {
     eml: EmlContent;
@@ -29,21 +29,20 @@ export interface Input extends PhaseInput {
 };
 
 export interface Output extends PhaseOutput {
-    transactions: Transactions;
+    bills: Bill[];
 };
 
-// Helper function to promisi   fy ffmpeg.
-export interface ReceiptSentryPhase extends Phase<Input, Output> {
+export interface BillSentryPhase extends Phase<Input, Output> {
     execute: (input: Input) => Promise<Output>;
 }
 
-export interface ReceiptSentryPhaseNode extends PhaseNode<Input, Output> {
-    phase: ReceiptSentryPhase;
+export interface BillSentryPhaseNode extends PhaseNode<Input, Output> {
+    phase: BillSentryPhase;
 }
 
 export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>;
 
-export const create = async (config: Config): Promise<ReceiptSentryPhaseNode> => {
+export const create = async (config: Config): Promise<BillSentryPhaseNode> => {
     const logger = getLogger();
 
     const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
@@ -51,12 +50,11 @@ export const create = async (config: Config): Promise<ReceiptSentryPhaseNode> =>
     const storage = Storage.create({ log: logger.debug });
 
     const execute = async (input: Input): Promise<Output> => {
-
         if (!input.eml) {
-            throw new Error("eml is required for filter function");
+            throw new Error("eml is required for bill sentry function");
         }
 
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'transaction_schema_response')}.json`);
+        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'bill_schema_response')}.json`);
 
         // If the response file exists, read and return its contents
         if (await storage.exists(responseDetailFile)) {
@@ -65,35 +63,34 @@ export const create = async (config: Config): Promise<ReceiptSentryPhaseNode> =>
             try {
                 parsed = JSON.parse(fileContents);
             } catch (err) {
-                throw new Error(`Failed to parse cached transaction_schema_response: ${err}`);
+                throw new Error(`Failed to parse cached bill_schema_response: ${err}`);
             }
             // Validate using zod
-            const schema = z.object({ transactions: TransactionsSchema });
+            const schema = z.object({ bills: BillsSchema });
             const result = schema.safeParse(parsed);
             if (!result.success) {
-                throw new Error(`Cached transaction_schema_response failed validation: ${result.error}`);
+                throw new Error(`Cached bill_schema_response failed validation: ${result.error}`);
             }
             return result.data;
         }
 
-        const prompt = await prompts.createReceiptSentryPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.classifications);
-        // Generate classification prompt using the transcription text
+        const prompt = await prompts.createBillSentryPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.classifications);
         const formatter = Formatter.create({ logger });
         const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
 
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
-            responseFormat: zodResponseFormat(z.object({ transactions: TransactionsSchema }), 'transactions'),
+            responseFormat: zodResponseFormat(z.object({ bills: BillsSchema }), 'bills'),
             model: config.classifyModel,
         });
 
-        logger.debug('Context Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
+        logger.debug('Bill Context Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
         await storage.writeFile(responseDetailFile, JSON.stringify(contextCompletion, null, 2), DEFAULT_CHARACTER_ENCODING);
 
         return contextCompletion;
     }
 
-    const receiptSentryPhase = createPhase(
-        RECEIPT_SENTRY_PHASE_NAME,
+    const billSentryPhase = createPhase(
+        BILL_SENTRY_PHASE_NAME,
         {
             execute,
         }
@@ -112,14 +109,10 @@ export const create = async (config: Config): Promise<ReceiptSentryPhaseNode> =>
     };
 
     return createPhaseNode(
-        RECEIPT_SENTRY_PHASE_NODE_NAME,
-        receiptSentryPhase,
+        BILL_SENTRY_PHASE_NODE_NAME,
+        billSentryPhase,
         {
             next: createConnections(),
         }
-    ) as ReceiptSentryPhaseNode;
-}
-
-
-
-
+    ) as BillSentryPhaseNode;
+} 
