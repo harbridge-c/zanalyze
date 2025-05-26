@@ -3,18 +3,18 @@ import * as dreadcabinet from '@theunwalked/dreadcabinet';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { z } from 'zod';
 import { Config } from '../types';
+import { BILL_PHASE_NODE_NAME, BillPhaseNode, create as createBillNode } from './bill';
 import { CLASSIFY_PHASE_NODE_NAME, ClassifyPhaseNode, create as createClassifyNode } from './classify';
 import { FILTER_PHASE_NODE_NAME, FilterPhaseNode, create as createFilterNode } from './filter';
 import { LOCATE_PHASE_NODE_NAME, LocatePhaseNode, create as createLocateNode } from './locate';
 import { RECEIPT_PHASE_NODE_NAME, ReceiptPhaseNode, create as createReceiptNode } from './receipt';
 import { SENTRY_AGGREGATOR_NODE_NAME, SentryAggregatorNode, create as createSentryAggregatorNode } from './sentry/aggregator';
-import { EVENT_SENTRY_PHASE_NODE_NAME, EventSentryPhaseNode, create as createEventSentryNode } from './sentry/event';
-import { PERSON_SENTRY_PHASE_NODE_NAME, PersonSentryPhaseNode, create as createPersonSentryNode } from './sentry/person';
-import { RECEIPT_SENTRY_PHASE_NODE_NAME, ReceiptSentryPhaseNode, create as createReceiptSentryNode } from './sentry/receipt';
+import { BILL_SENTRY_PHASE_NODE_NAME, BillSentryPhaseNode, Bills, create as createBillSentryNode } from './sentry/bill';
+import { EVENT_SENTRY_PHASE_NODE_NAME, EventSentryPhaseNode, Events, create as createEventSentryNode } from './sentry/event';
+import { PERSON_SENTRY_PHASE_NODE_NAME, People, PersonSentryPhaseNode, create as createPersonSentryNode } from './sentry/person';
+import { RECEIPT_SENTRY_PHASE_NODE_NAME, ReceiptSentryPhaseNode, Transactions, create as createReceiptSentryNode } from './sentry/receipt';
 import { SIMPLIFY_PHASE_NODE_NAME, SimplifyPhaseNode, create as createSimplifyNode } from './simplify';
 import { SUMMARIZE_PHASE_NODE_NAME, SummarizePhaseNode, create as createSummarizeNode } from './summarize';
-import { BILL_SENTRY_PHASE_NODE_NAME, BillSentryPhaseNode, create as createBillSentryNode } from './sentry/bill';
-import { BILL_PHASE_NODE_NAME, BillPhaseNode, create as createBillNode } from './bill';
 
 export const PROCESS_NAME = 'Process';
 
@@ -28,69 +28,6 @@ export const ClassificationsSchema = z.array(ClassificationSchema);
 
 export type Classification = z.infer<typeof ClassificationSchema>;
 export type Classifications = z.infer<typeof ClassificationsSchema>;
-
-export const EventSchema = z.object({
-    name: z.string(),
-    date: z.string(),
-    time: z.string(),
-    eventType: z.enum(['appointment', 'deadline', 'meeting', 'other']),
-    dateType: z.enum(['exact', 'approximate', 'range']),
-    location: z.string(),
-    description: z.string(),
-    category: z.string(),
-    reason: z.string(),
-});
-
-export const EventsSchema = z.array(EventSchema);
-
-export type Event = z.infer<typeof EventSchema>;
-export type Events = z.infer<typeof EventsSchema>;
-
-export const PersonSchema = z.object({
-    name: z.string(),
-    role: z.string(),
-    category: z.enum(['family', 'friend', 'work', 'project', 'other']),
-    reason: z.string(),
-});
-
-export const PeopleSchema = z.array(PersonSchema);
-
-export type Person = z.infer<typeof PersonSchema>;
-export type People = z.infer<typeof PeopleSchema>;
-
-export const TransactionSchema = z.object({
-    date: z.string(),
-    amount: z.number(),
-    description: z.string(),
-    type: z.enum(['deposit', 'withdrawal', 'order', 'receipt', 'transfer', 'other']),
-    category: z.enum(['food', 'transportation', 'housing', 'utilities', 'entertainment', 'education', 'loan', 'credit', 'other']),
-    status: z.enum(['pending', 'completed', 'failed', 'due', 'paid', 'overdue', 'other']),
-    due_date: z.string(),
-    merchant_organization: z.string(),
-    merchant_type: z.enum(['bank', 'delivery_service', 'transportation', 'housing', 'utilities', 'entertainment', 'education', 'loan', 'credit', 'other']),
-    reason: z.string(),
-});
-
-export const TransactionsSchema = z.array(TransactionSchema);
-
-export type Transaction = z.infer<typeof TransactionSchema>;
-export type Transactions = z.infer<typeof TransactionsSchema>;
-
-export const BillSchema = z.object({
-    provider: z.string(),
-    kind: z.enum(['utility', 'insurance', 'loan', 'rent', 'subscription', 'other']),
-    amount_due: z.number(),
-    due_date: z.string(),
-    period: z.string(),
-    status: z.enum(['due', 'paid', 'overdue', 'other']),
-    description: z.string(),
-    reason: z.string(),
-});
-
-export const BillsSchema = z.array(BillSchema);
-
-export type Bill = z.infer<typeof BillSchema>;
-export type Bills = z.infer<typeof BillsSchema>;
 
 export interface Context extends ProcessContext {
     //  These are the values that are created by the Create phase

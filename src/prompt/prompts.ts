@@ -1,6 +1,9 @@
 import { Builder, createParameters, Model, Parameters, Prompt } from '@riotprompt/riotprompt';
 import path from 'path';
-import { Classifications, Events, People, Transactions } from 'phases/process';
+import { Classifications } from '../phases/process';
+import { Events } from '../phases/sentry/event';
+import { People } from '../phases/sentry/person';
+import { Transactions } from '../phases/sentry/receipt';
 import { fileURLToPath } from 'url';
 import { DEFAULT_CHARACTER_ENCODING, DEFAULT_INSTRUCTIONS_CLASSIFY_FILE, DEFAULT_INSTRUCTIONS_EVENT_SENTRY_FILE, DEFAULT_INSTRUCTIONS_PERSON_SENTRY_FILE, DEFAULT_INSTRUCTIONS_RECEIPT_FILE, DEFAULT_INSTRUCTIONS_RECEIPT_SENTRY_FILE, DEFAULT_INSTRUCTIONS_SUMMARIZE_FILE, DEFAULT_PERSONA_CLASSIFIER_FILE, DEFAULT_PERSONA_EVENT_SENTRY_FILE, DEFAULT_PERSONA_PERSON_SENTRY_FILE, DEFAULT_PERSONA_RECEIPT_FILE, DEFAULT_PERSONA_RECEIPT_SENTRY_FILE, DEFAULT_PERSONA_SUMMARIZE_FILE, DEFAULT_PERSONA_BILL_SENTRY_FILE, DEFAULT_INSTRUCTIONS_BILL_SENTRY_FILE, DEFAULT_PERSONA_BILL_FILE, DEFAULT_INSTRUCTIONS_BILL_FILE } from '../constants';
 import { getLogger } from '../logging';

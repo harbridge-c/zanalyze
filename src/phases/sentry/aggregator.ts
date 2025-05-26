@@ -4,8 +4,12 @@ import { RECEIPT_PHASE_NODE_NAME } from '../receipt';
 import { SUMMARIZE_PHASE_NODE_NAME } from '../summarize';
 import { getLogger } from '../../logging';
 import { Config as ZanalyzeConfig } from '../../types';
-import { Bills, Classifications, Events, People, Transactions } from '../process';
 import { BILL_PHASE_NODE_NAME } from '../bill';
+import { Classifications } from '../process';
+import { Events } from './event';
+import { People } from './person';
+import { Transactions } from './receipt';
+import { Bills } from './bill';
 
 
 export const SENTRY_AGGREGATOR_NAME = 'sentry_aggregator';

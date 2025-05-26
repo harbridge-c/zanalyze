@@ -1,22 +1,30 @@
-import { createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
-import { Chat, Formatter } from '@riotprompt/riotprompt';
+import { Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { zodResponseFormat } from 'openai/helpers/zod';
-import { ChatCompletionMessageParam } from 'openai/resources';
-import path from 'path';
 import { z } from 'zod';
-import { DEFAULT_CHARACTER_ENCODING } from '../../constants';
-import { getLogger } from '../../logging';
-import * as Prompt from '../../prompt/prompts';
-import { Config as ZanalyzeConfig } from '../../types';
-import { stringifyJSON } from '../../util/general';
-import * as OpenAI from '../../util/openai';
-import * as Storage from '../../util/storage';
-import { Classifications, Context, Transactions, TransactionsSchema } from '../process';
-import { SENTRY_AGGREGATOR_NODE_NAME } from './aggregator';
+import { Classifications } from '../process';
+import { createSentryPhaseNode } from './sentryPhaseFactory';
 
 export const RECEIPT_SENTRY_PHASE_NAME = 'receipt_sentry';
 export const RECEIPT_SENTRY_PHASE_NODE_NAME = 'receipt_sentry_node';
+
+// Transaction schema and types
+export const TransactionSchema = z.object({
+    date: z.string(),
+    amount: z.number(),
+    description: z.string(),
+    type: z.enum(['deposit', 'withdrawal', 'order', 'receipt', 'transfer', 'other']),
+    category: z.enum(['food', 'transportation', 'housing', 'utilities', 'entertainment', 'education', 'loan', 'credit', 'other']),
+    status: z.enum(['pending', 'completed', 'failed', 'due', 'paid', 'overdue', 'other']),
+    due_date: z.string(),
+    merchant_organization: z.string(),
+    merchant_type: z.enum(['bank', 'delivery_service', 'transportation', 'housing', 'utilities', 'entertainment', 'education', 'loan', 'credit', 'other']),
+    reason: z.string(),
+});
+
+export const TransactionsSchema = z.array(TransactionSchema);
+
+export type Transaction = z.infer<typeof TransactionSchema>;
+export type Transactions = z.infer<typeof TransactionsSchema>;
 
 export interface Input extends PhaseInput {
     eml: EmlContent;
@@ -32,93 +40,24 @@ export interface Output extends PhaseOutput {
     transactions: Transactions;
 };
 
-// Helper function to promisi   fy ffmpeg.
-export interface ReceiptSentryPhase extends Phase<Input, Output> {
-    execute: (input: Input) => Promise<Output>;
-}
+export type ReceiptSentryPhaseNode = PhaseNode<Input, Output>;
 
-export interface ReceiptSentryPhaseNode extends PhaseNode<Input, Output> {
-    phase: ReceiptSentryPhase;
-}
+export type Config = {
+    classifyModel: string;
+    configDirectory: string;
+    overrides: any;
+    model: string;
+    debug: boolean;
+};
 
-export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>;
-
-export const create = async (config: Config): Promise<ReceiptSentryPhaseNode> => {
-    const logger = getLogger();
-
-    const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
-
-    const storage = Storage.create({ log: logger.debug });
-
-    const execute = async (input: Input): Promise<Output> => {
-
-        if (!input.eml) {
-            throw new Error("eml is required for filter function");
-        }
-
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'transaction_schema_response')}.json`);
-
-        // If the response file exists, read and return its contents
-        if (await storage.exists(responseDetailFile)) {
-            const fileContents = await storage.readFile(responseDetailFile, DEFAULT_CHARACTER_ENCODING);
-            let parsed: any;
-            try {
-                parsed = JSON.parse(fileContents);
-            } catch (err) {
-                throw new Error(`Failed to parse cached transaction_schema_response: ${err}`);
-            }
-            // Validate using zod
-            const schema = z.object({ transactions: TransactionsSchema });
-            const result = schema.safeParse(parsed);
-            if (!result.success) {
-                throw new Error(`Cached transaction_schema_response failed validation: ${result.error}`);
-            }
-            return result.data;
-        }
-
-        const prompt = await prompts.createReceiptSentryPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.classifications);
-        // Generate classification prompt using the transcription text
-        const formatter = Formatter.create({ logger });
-        const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-
-        const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
-            responseFormat: zodResponseFormat(z.object({ transactions: TransactionsSchema }), 'transactions'),
-            model: config.classifyModel,
-        });
-
-        logger.debug('Context Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
-        await storage.writeFile(responseDetailFile, JSON.stringify(contextCompletion, null, 2), DEFAULT_CHARACTER_ENCODING);
-
-        return contextCompletion;
-    }
-
-    const receiptSentryPhase = createPhase(
-        RECEIPT_SENTRY_PHASE_NAME,
-        {
-            execute,
-        }
-    );
-
-    // Connect to summarize phase
-    const createConnections = () => {
-        const transform = async (output: Output, context: Context): Promise<[any, Context]> => {
-            const input = {
-                ...context,
-                ...output,
-            };
-            return [input, input as Context];
-        };
-        return [createConnection('toSummarize', SENTRY_AGGREGATOR_NODE_NAME, { transform })] as const;
-    };
-
-    return createPhaseNode(
-        RECEIPT_SENTRY_PHASE_NODE_NAME,
-        receiptSentryPhase,
-        {
-            next: createConnections(),
-        }
-    ) as ReceiptSentryPhaseNode;
-}
+export const create = createSentryPhaseNode({
+    phaseName: RECEIPT_SENTRY_PHASE_NAME,
+    phaseNodeName: RECEIPT_SENTRY_PHASE_NODE_NAME,
+    outputKey: 'transactions',
+    schema: TransactionsSchema,
+    promptFunctionName: 'createReceiptSentryPrompt',
+    responseFilePattern: 'transaction_schema_response',
+});
 
 
 

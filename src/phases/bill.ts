@@ -1,4 +1,4 @@
-import { AggregationResult, Aggregator, AggregatorNode, Context, createAggregator, createAggregatorNode, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
+import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -12,7 +12,10 @@ import { Config as ZanalyzeConfig } from '../types';
 import { stringifyJSON } from '../util/general';
 import * as OpenAI from '../util/openai';
 import * as Storage from '../util/storage';
-import { Classifications, Events, People, Bills, BillSchema } from './process';
+import { Classifications } from './process';
+import { Events } from './sentry/event';
+import { People } from './sentry/person';
+import { Bills } from './sentry/bill';
 
 export const BILL_PHASE_NAME = 'bill';
 export const BILL_PHASE_NODE_NAME = 'bill_node';
@@ -80,8 +83,6 @@ export const create = async (config: Config): Promise<BillPhaseNode> => {
             logger.error('bills is required for bill function');
             throw new Error("bills is required for bill function");
         }
-
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'bill_response')}.json`);
 
         // Write bill summary to markdown file in output directory
         const billFilename = input.filename.replace(/output(\.[^.]*)?$/, 'bill.md');

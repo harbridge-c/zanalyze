@@ -1,22 +1,28 @@
-import { createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
-import { Chat, Formatter } from '@riotprompt/riotprompt';
+import { Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { zodResponseFormat } from 'openai/helpers/zod';
-import { ChatCompletionMessageParam } from 'openai/resources';
-import path from 'path';
 import { z } from 'zod';
-import { DEFAULT_CHARACTER_ENCODING } from '../../constants';
-import { getLogger } from '../../logging';
-import * as Prompt from '../../prompt/prompts';
-import { Config as ZanalyzeConfig } from '../../types';
-import { stringifyJSON } from '../../util/general';
-import * as OpenAI from '../../util/openai';
-import * as Storage from '../../util/storage';
-import { Bill, BillsSchema, Classifications, Context } from '../process';
-import { SENTRY_AGGREGATOR_NODE_NAME } from './aggregator';
+import { Classifications } from '../process';
+import { createSentryPhaseNode } from './sentryPhaseFactory';
 
 export const BILL_SENTRY_PHASE_NAME = 'bill_sentry';
 export const BILL_SENTRY_PHASE_NODE_NAME = 'bill_sentry_node';
+
+// Bill schema and types
+export const BillSchema = z.object({
+    provider: z.string(),
+    kind: z.enum(['utility', 'insurance', 'loan', 'rent', 'subscription', 'other']),
+    amount_due: z.number(),
+    due_date: z.string(),
+    period: z.string(),
+    status: z.enum(['due', 'paid', 'overdue', 'other']),
+    description: z.string(),
+    reason: z.string(),
+});
+
+export const BillsSchema = z.array(BillSchema);
+
+export type Bill = z.infer<typeof BillSchema>;
+export type Bills = z.infer<typeof BillsSchema>;
 
 export interface Input extends PhaseInput {
     eml: EmlContent;
@@ -29,90 +35,24 @@ export interface Input extends PhaseInput {
 };
 
 export interface Output extends PhaseOutput {
-    bills: Bill[];
+    bills: Bills;
 };
 
-export interface BillSentryPhase extends Phase<Input, Output> {
-    execute: (input: Input) => Promise<Output>;
-}
+export type BillSentryPhaseNode = PhaseNode<Input, Output>;
 
-export interface BillSentryPhaseNode extends PhaseNode<Input, Output> {
-    phase: BillSentryPhase;
-}
+export type Config = {
+    classifyModel: string;
+    configDirectory: string;
+    overrides: any;
+    model: string;
+    debug: boolean;
+};
 
-export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>;
-
-export const create = async (config: Config): Promise<BillSentryPhaseNode> => {
-    const logger = getLogger();
-
-    const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
-
-    const storage = Storage.create({ log: logger.debug });
-
-    const execute = async (input: Input): Promise<Output> => {
-        if (!input.eml) {
-            throw new Error("eml is required for bill sentry function");
-        }
-
-        const responseDetailFile = path.join(input.detailPath, `${input.filename.replace('output', 'bill_schema_response')}.json`);
-
-        // If the response file exists, read and return its contents
-        if (await storage.exists(responseDetailFile)) {
-            const fileContents = await storage.readFile(responseDetailFile, DEFAULT_CHARACTER_ENCODING);
-            let parsed: any;
-            try {
-                parsed = JSON.parse(fileContents);
-            } catch (err) {
-                throw new Error(`Failed to parse cached bill_schema_response: ${err}`);
-            }
-            // Validate using zod
-            const schema = z.object({ bills: BillsSchema });
-            const result = schema.safeParse(parsed);
-            if (!result.success) {
-                throw new Error(`Cached bill_schema_response failed validation: ${result.error}`);
-            }
-            return result.data;
-        }
-
-        const prompt = await prompts.createBillSentryPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.classifications);
-        const formatter = Formatter.create({ logger });
-        const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
-
-        const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
-            responseFormat: zodResponseFormat(z.object({ bills: BillsSchema }), 'bills'),
-            model: config.classifyModel,
-        });
-
-        logger.debug('Bill Context Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
-        await storage.writeFile(responseDetailFile, JSON.stringify(contextCompletion, null, 2), DEFAULT_CHARACTER_ENCODING);
-
-        return contextCompletion;
-    }
-
-    const billSentryPhase = createPhase(
-        BILL_SENTRY_PHASE_NAME,
-        {
-            execute,
-        }
-    );
-
-    // Connect to summarize phase
-    const createConnections = () => {
-        const transform = async (output: Output, context: Context): Promise<[any, Context]> => {
-            const input = {
-                ...context,
-                ...output,
-            };
-            return [input, input as Context];
-        };
-        return [createConnection('toSummarize', SENTRY_AGGREGATOR_NODE_NAME, { transform })] as const;
-    };
-
-    return createPhaseNode(
-        BILL_SENTRY_PHASE_NODE_NAME,
-        billSentryPhase,
-        {
-            next: createConnections(),
-        }
-    ) as BillSentryPhaseNode;
-} 
+export const create = createSentryPhaseNode({
+    phaseName: BILL_SENTRY_PHASE_NAME,
+    phaseNodeName: BILL_SENTRY_PHASE_NODE_NAME,
+    outputKey: 'bills',
+    schema: BillsSchema,
+    promptFunctionName: 'createBillSentryPrompt',
+    responseFilePattern: 'bill_schema_response',
+}); 

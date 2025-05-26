@@ -1,4 +1,4 @@
-import { AggregationResult, Aggregator, AggregatorNode, Context, createAggregator, createAggregatorNode, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
+import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -12,8 +12,10 @@ import { Config as ZanalyzeConfig } from '../types';
 import { stringifyJSON } from '../util/general';
 import * as OpenAI from '../util/openai';
 import * as Storage from '../util/storage';
-import { Classifications, Events, People, Transactions } from './process';
-
+import { Classifications } from './process';
+import { Events } from './sentry/event';
+import { People } from './sentry/person';
+import { Transactions } from './sentry/receipt';
 
 export const RECEIPT_PHASE_NAME = 'receipt';
 export const RECEIPT_PHASE_NODE_NAME = 'receipt_node';
