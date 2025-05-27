@@ -1,4 +1,4 @@
-import { Connection, Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
+import { Connection, Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, VerifyMethodResponse } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -19,11 +19,6 @@ export const CLASSIFY_PHASE_NODE_NAME = 'classify_node';
 
 export interface Input extends PhaseInput {
     eml: EmlContent;
-    outputPath: string;
-    detailPath: string;
-    hash: string;
-    filename: string;
-    contextPath: string;
 };
 
 export interface Output extends PhaseOutput {
@@ -57,11 +52,22 @@ export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
 
     const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
 
-    const execute = async (input: Input): Promise<Output> => {
+    const verify = async (input: Input): Promise<VerifyMethodResponse> => {
+        const response: VerifyMethodResponse = {
+            verified: true,
+            messages: [],
+        };
 
         if (!input.eml) {
-            throw new Error("eml is required for filter function");
+            logger.error('eml is required for classify function');
+            response.verified = false;
+            response.messages.push('eml is required for classify function');
         }
+
+        return response;
+    }
+
+    const execute = async (input: Input): Promise<Output> => {
 
         const prompt = await prompts.createClassificationPrompt(input.eml.text || input.eml.html || '', input.eml.headers);
         // Generate classification prompt using the transcription text
@@ -82,6 +88,7 @@ export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
         CLASSIFY_PHASE_NAME,
         {
             execute,
+            verify,
         }
     );
 

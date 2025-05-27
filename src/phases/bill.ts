@@ -1,4 +1,4 @@
-import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
+import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, VerifyMethodResponse } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -23,10 +23,7 @@ export const BILL_PHASE_NODE_NAME = 'bill_node';
 export interface Input extends PhaseInput {
     eml: EmlContent;
     outputPath: string;
-    detailPath: string;
-    hash: string;
     filename: string;
-    contextPath: string;
     classifications: Classifications;
     events: Events;
     people: People;
@@ -62,28 +59,43 @@ export const create = async (config: Config): Promise<BillPhaseNode> => {
 
     const storage = Storage.create({ log: logger.debug });
 
-    const execute = async (input: Input): Promise<Output> => {
+
+    const verify = async (input: Input): Promise<VerifyMethodResponse> => {
+        const response: VerifyMethodResponse = {
+            verified: true,
+            messages: [],
+        };
+
         if (!input.eml) {
             logger.error('eml is required for bill function');
-            throw new Error("eml is required for bill function");
+            response.verified = false;
+            response.messages.push('eml is required for bill function');
         }
         if (!input.events) {
             logger.error('events is required for bill function');
-            throw new Error("events is required for bill function");
+            response.verified = false;
+            response.messages.push('events is required for bill function');
         }
         if (!input.people) {
             logger.error('people is required for bill function');
-            throw new Error("people is required for bill function");
+            response.verified = false;
+            response.messages.push('people is required for bill function');
         }
         if (!input.classifications) {
             logger.error('classifications is required for bill function');
-            throw new Error("classifications is required for bill function");
+            response.verified = false;
+            response.messages.push('classifications is required for bill function');
         }
         if (!input.bills) {
             logger.error('bills is required for bill function');
-            throw new Error("bills is required for bill function");
+            response.verified = false;
+            response.messages.push('bills is required for bill function');
         }
 
+        return response;
+    }
+
+    const execute = async (input: Input): Promise<Output> => {
         // Write bill summary to markdown file in output directory
         const billFilename = input.filename.replace(/output(\.[^.]*)?$/, 'bill.md');
         const billsDir = path.join(input.outputPath, 'bills');
@@ -120,6 +132,7 @@ export const create = async (config: Config): Promise<BillPhaseNode> => {
         BILL_PHASE_NAME,
         {
             execute,
+            verify,
         }
     );
 

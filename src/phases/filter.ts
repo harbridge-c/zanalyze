@@ -1,5 +1,5 @@
 import { EmailAddress, EmlContent } from '@vortiq/eml-parse-js';
-import { Connection, Context, createConnection, createDecision, createPhase, createPhaseNode, createTermination, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, Termination } from '@maxdrellin/xenocline';
+import { Connection, Context, createConnection, createDecision, createPhase, createPhaseNode, createTermination, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, Termination, VerifyMethodResponse } from '@maxdrellin/xenocline';
 import { getLogger } from '../logging';
 import { Config as ZanalyzeConfig } from '../types';
 import { CLASSIFY_PHASE_NODE_NAME, Input as ClassifyPhaseInput } from './classify';
@@ -26,14 +26,25 @@ export type FilterPhaseNode = PhaseNode<Input, Output>;
 export const create = async (config: Config): Promise<FilterPhaseNode> => {
     const logger = getLogger();
 
+    const verify = async (input: Input): Promise<VerifyMethodResponse> => {
+        const response: VerifyMethodResponse = {
+            verified: true,
+            messages: [],
+        };
+
+        if (!input.eml) {
+            logger.error('eml is required for filter function');
+            response.verified = false;
+            response.messages.push('eml is required for filter function');
+        }
+
+        return response;
+    }
+
     const execute = async (input: Input): Promise<Output> => {
 
         let include = true;
         let includeReason = 'Default Include';
-
-        if (!input.eml) {
-            throw new Error("eml is required for filter function");
-        }
 
         if (!config.filters) {
             return {
@@ -138,41 +149,10 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
             includeReason: output.includeReason,
         };
 
-        // TODO: Ok, so the output of a phase might control the execution.  Does this happen in the connection?
-        //  Is the connection where that decision happens?  Or is it the phase?
-        // By that I mean does the phase return something that says "we're done?"
-
-
-        // TODO: Figure out a better way to handle errors during transformation...
-        if (!context.eml) {
-            throw new Error('eml is required for classify phase');
-        }
-
-        if (!context.outputPath) {
-            throw new Error('outputPath is required for classify phase');
-        }
-
-        if (!context.detailPath) {
-            throw new Error('detailPath is required for classify phase');
-        }
-
-        if (!context.hash) {
-            throw new Error('hash is required for classify phase');
-        }
-
-        if (!context.filename) {
-            throw new Error('filename is required for classify phase');
-        }
-
-        if (!context.contextPath) {
-            throw new Error('contextPath is required for classify phase');
-        }
-
         return [
             {
                 eml: context.eml as EmlContent,
                 outputPath: context.outputPath as string,
-                detailPath: context.detailPath as string,
                 hash: context.hash as string,
                 filename: context.filename as string,
                 contextPath: context.contextPath as string,
@@ -191,7 +171,7 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
         }
     }
 
-    const phase = createPhase(FILTER_PHASE_NAME, { execute });
+    const phase = createPhase(FILTER_PHASE_NAME, { execute, verify });
     const decision = createDecision(FILTER_DECISION_NAME, decide);
 
     const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
@@ -202,7 +182,6 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
 
         return [output, processedContext];
     }
-
 
     return createPhaseNode(FILTER_PHASE_NODE_NAME, phase, {
         next: [decision],

@@ -1,4 +1,4 @@
-import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
+import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, VerifyMethodResponse } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -23,10 +23,7 @@ export const RECEIPT_PHASE_NODE_NAME = 'receipt_node';
 export interface Input extends PhaseInput {
     eml: EmlContent;
     outputPath: string;
-    detailPath: string;
-    hash: string;
     filename: string;
-    contextPath: string;
     classifications: Classifications;
     events: Events;
     people: People;
@@ -62,29 +59,46 @@ export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
 
     const storage = Storage.create({ log: logger.debug });
 
-    const execute = async (input: Input): Promise<Output> => {
+    const verify = async (input: Input): Promise<VerifyMethodResponse> => {
+        const response: VerifyMethodResponse = {
+            verified: true,
+            messages: [],
+        };
+
         if (!input.eml) {
-            logger.error('eml is required for summarize function');
-            throw new Error("eml is required for summarize function");
+            logger.error('eml is required for receipt function');
+            response.verified = false;
+            response.messages.push('eml is required for receipt function');
         }
 
         if (!input.events) {
-            logger.error('events is required for summarize function');
-            throw new Error("events is required for summarize function");
-        }
-        if (!input.people) {
-            logger.error('people is required for summarize function');
-            throw new Error("people is required for summarize function");
-        }
-        if (!input.classifications) {
-            logger.error('classifications is required for summarize function');
-            throw new Error("classifications is required for summarize function");
-        }
-        if (!input.transactions) {
-            logger.error('transactions is required for summarize function');
-            throw new Error("transactions is required for summarize function");
+            logger.error('events is required for receipt function');
+            response.verified = false;
+            response.messages.push('events is required for receipt function');
         }
 
+        if (!input.people) {
+            logger.error('people is required for receipt function');
+            response.verified = false;
+            response.messages.push('people is required for receipt function');
+        }
+
+        if (!input.classifications) {
+            logger.error('classifications is required for receipt function');
+            response.verified = false;
+            response.messages.push('classifications is required for receipt function');
+        }
+
+        if (!input.transactions) {
+            logger.error('transactions is required for receipt function');
+            response.verified = false;
+            response.messages.push('transactions is required for receipt function');
+        }
+
+        return response;
+    }
+
+    const execute = async (input: Input): Promise<Output> => {
         // Write receipt to markdown file in output directory
         const receiptFilename = input.filename.replace(/output(\.[^.]*)?$/, 'receipt.md');
         const receiptsDir = path.join(input.outputPath, 'receipts');
@@ -121,6 +135,7 @@ export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
         RECEIPT_PHASE_NAME,
         {
             execute,
+            verify,
         }
     );
 

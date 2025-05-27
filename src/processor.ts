@@ -9,11 +9,10 @@ import * as Process from './phases/process';
 import { Config } from './types';
 import * as Storage from './util/storage';
 
-import { Context, createBeginning, createEventFilter, createEventHandler, createFilteredHandler, EventHandler, executeProcess, NodeEvent, ProcessEvent, TransitionEvent } from '@maxdrellin/xenocline';
-import { DEFAULT_CHARACTER_ENCODING } from './constants';
-import { Event } from '@maxdrellin/xenocline';
+import { Context, createBeginning, createEventFilter, createEventHandler, createFilteredHandler, Event, EventHandler, executeProcess, NodeEvent } from '@maxdrellin/xenocline';
 import path from 'path';
 import { Logger } from 'winston';
+import { DEFAULT_CHARACTER_ENCODING } from './constants';
 
 export interface Instance {
     process(file: string): Promise<void>;

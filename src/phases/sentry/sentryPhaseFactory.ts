@@ -1,4 +1,4 @@
-import { createConnection, createPhase, createPhaseNode } from '@maxdrellin/xenocline';
+import { createConnection, createPhase, createPhaseNode, VerifyMethodResponse } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { ChatCompletionMessageParam } from 'openai/resources';
@@ -24,11 +24,28 @@ export function createSentryPhaseNode(options: SentryPhaseFactoryOptions) {
         const logger = getLogger();
         const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
 
-        const execute = async (input: any): Promise<any> => {
+        const verify = async (input: any): Promise<VerifyMethodResponse> => {
+            const response: VerifyMethodResponse = {
+                verified: true,
+                messages: [],
+            };
+
             if (!input.eml) {
-                throw new Error('eml is required for sentry function');
+                logger.error('eml is required for sentry function');
+                response.verified = false;
+                response.messages.push('eml is required for sentry function');
             }
 
+            if (!input.classifications) {
+                logger.error('classifications is required for sentry function');
+                response.verified = false;
+                response.messages.push('classifications is required for sentry function');
+            }
+
+            return response;
+        }
+
+        const execute = async (input: any): Promise<any> => {
             // Dynamically call the correct prompt function
             const promptFn = prompts[options.promptFunctionName] as (...args: any[]) => Promise<any>;
             const prompt = await promptFn(
@@ -47,7 +64,7 @@ export function createSentryPhaseNode(options: SentryPhaseFactoryOptions) {
             return contextCompletion;
         };
 
-        const sentryPhase = createPhase(options.phaseName, { execute });
+        const sentryPhase = createPhase(options.phaseName, { execute, verify });
         // Connect to summarize phase
         const createConnections = () => {
             const transform = async (output: any, context: Context): Promise<[any, Context]> => {

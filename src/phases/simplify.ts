@@ -1,5 +1,5 @@
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
+import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, VerifyMethodResponse } from '@maxdrellin/xenocline';
 import { getLogger } from '../logging';
 import { Config } from '../types';
 import { FILTER_PHASE_NODE_NAME, Input as FilterPhaseInput } from './filter';
@@ -22,6 +22,21 @@ export type SimplifyPhaseNode = PhaseNode<Input, Output>;
 
 export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
     const logger = getLogger();
+
+    const verify = async (input: Input): Promise<VerifyMethodResponse> => {
+        const response: VerifyMethodResponse = {
+            verified: true,
+            messages: [],
+        };
+
+        if (!input.eml) {
+            logger.error('eml is required for simplify function');
+            response.verified = false;
+            response.messages.push('eml is required for simplify function');
+        }
+
+        return response;
+    }
 
     const execute = async (input: Input): Promise<Output> => {
 
@@ -92,7 +107,7 @@ export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
         ];
     }
 
-    const phase = createPhase(SIMPLIFY_PHASE_NAME, { execute });
+    const phase = createPhase(SIMPLIFY_PHASE_NAME, { execute, verify });
     const connection = createConnection(TO_FILTER_CONNECTION_NAME, FILTER_PHASE_NODE_NAME, { transform });
 
     const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {

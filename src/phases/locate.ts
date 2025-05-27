@@ -67,7 +67,6 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
             creationTime: output.creationTime,
             outputPath: output.outputPath,
             contextPath: output.contextPath,
-            detailPath: output.detailPath,
             hash: output.hash,
             filename: output.filename,
             eml: output.eml,
