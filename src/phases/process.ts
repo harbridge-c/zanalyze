@@ -25,7 +25,6 @@ export interface Context extends ProcessContext {
     creationTime?: Date;
     outputPath?: string;
     contextPath?: string;
-    detailPath?: string;
     hash?: string;
     filename?: string;
     eml?: EmlContent | null; // Allow null for initial state

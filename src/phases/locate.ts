@@ -22,7 +22,6 @@ export interface Output extends PhaseOutput {
     creationTime: Date;
     outputPath: string;
     contextPath: string;
-    detailPath: string;
     hash: string;
     eml: EmlContent;
     filename: string;
@@ -49,15 +48,12 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
         const outputPath: string = await operator.constructOutputDirectory(date);
         const contextPath: string = path.join(outputPath, '.context');
         await storage.createDirectory(contextPath);
-        const detailPath: string = path.join(outputPath, '.detail');
-        await storage.createDirectory(detailPath);
         const safeSubject = eml.subject ? eml.subject.substring(0, 12).replace(/[^a-zA-Z0-9-_]/g, '_') : '';
         const filename: string = await operator.constructFilename(date, 'output', hash, { subject: safeSubject });
         return {
             creationTime: date,
             outputPath,
             contextPath,
-            detailPath,
             hash,
             filename,
             eml,
