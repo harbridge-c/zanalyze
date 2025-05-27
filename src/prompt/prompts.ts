@@ -22,7 +22,9 @@ import {
     DEFAULT_INSTRUCTIONS_SENTRY_RECEIPT_FILE,
     DEFAULT_PERSONA_SENTRY_RECEIPT_FILE,
     DEFAULT_PERSONA_RECEIPT_FILE,
-    DEFAULT_INSTRUCTIONS_RECEIPT_FILE
+    DEFAULT_INSTRUCTIONS_RECEIPT_FILE,
+    DEFAULT_PERSONA_HTML2TEXT_FILE,
+    DEFAULT_INSTRUCTIONS_HTML2TEXT_FILE
 } from '../constants';
 import { getLogger } from '../logging';
 import { Config } from '../types';
@@ -40,6 +42,7 @@ export interface Factory {
     createSummarizePrompt: (text: string, headers: any, events: Events, people: People, classifications: Classifications) => Promise<Prompt>;
     createReceiptPrompt: (text: string, headers: any, events: Events, people: People, classifications: Classifications, transactions: Transactions) => Promise<Prompt>;
     createBillPrompt: (text: string, headers: any, events: Events, people: People, classifications: Classifications, bills: any) => Promise<Prompt>;
+    createHtml2TextPrompt: (html: string) => Promise<Prompt>;
 }
 
 export const create = async (model: Model, config: Config): Promise<Factory> => {
@@ -217,6 +220,23 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
         return prompt;
     };
 
+    const createHtml2TextPrompt = async (html: string): Promise<Prompt> => {
+        let builder: Builder.Instance = Builder.create({
+            logger,
+            overrides: config.overrides,
+            basePath: __dirname,
+            overridePath: config.configDirectory,
+        });
+        builder = await builder.addPersonaPath(DEFAULT_PERSONA_HTML2TEXT_FILE);
+        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_HTML2TEXT_FILE);
+        builder = await builder.addContent(html, { title: 'html' });
+        if (config.contextDirectories) {
+            builder = await builder.loadContext(config.contextDirectories);
+        }
+        const prompt = builder.build();
+        return prompt;
+    };
+
     return {
         createClassificationPrompt,
         createEventSentryPrompt,
@@ -226,6 +246,7 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
         createSummarizePrompt,
         createReceiptPrompt,
         createBillPrompt,
+        createHtml2TextPrompt,
     };
 }
 

@@ -2,7 +2,7 @@ import { EmailAddress, EmlContent } from '@vortiq/eml-parse-js';
 import { Connection, Context, createConnection, createDecision, createPhase, createPhaseNode, createTermination, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, Termination, VerifyMethodResponse } from '@maxdrellin/xenocline';
 import { getLogger } from '../logging';
 import { Config as ZanalyzeConfig } from '../types';
-import { CLASSIFY_PHASE_NODE_NAME, Input as ClassifyPhaseInput } from './classify';
+import { Input as SimplifyPhaseInput, SIMPLIFY_PHASE_NODE_NAME } from './simplify';
 
 export const FILTER_PHASE_NAME = 'filter';
 export const FILTER_PHASE_NODE_NAME = 'filter_node';
@@ -142,7 +142,7 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
         };
     }
 
-    const transform = async (output: Output, context: Context): Promise<[ClassifyPhaseInput, Context]> => {
+    const transform = async (output: Output, context: Context): Promise<[SimplifyPhaseInput, Context]> => {
         context = {
             ...context,
             include: output.include,
@@ -162,7 +162,7 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
     }
 
     const decide = async (output: Output): Promise<Termination<Output, Context> | Connection<Output, Context>[]> => {
-        const connection = createConnection('toClassify', CLASSIFY_PHASE_NODE_NAME, { transform });
+        const connection = createConnection('toClassify', SIMPLIFY_PHASE_NODE_NAME, { transform });
         if (output.include) {
             return [connection];
         } else {

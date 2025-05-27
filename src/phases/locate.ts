@@ -1,16 +1,17 @@
+import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
 import * as dreadcabinet from '@theunwalked/dreadcabinet';
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
 import path from 'path';
 import * as Logging from '../logging';
 import { Config } from '../types';
 import { fromEml } from '../util/email';
 import * as Storage from '../util/storage';
-import { SIMPLIFY_PHASE_NODE_NAME, Input as SimplifyPhaseInput } from './simplify';
+import { FILTER_PHASE_NODE_NAME } from './filter';
+import { Input as FilterPhaseInput } from './filter';
 
 export const LOCATE_PHASE_NODE_NAME = 'locate_node';
 export const LOCATE_PHASE_NAME = 'locate';
-export const TO_SIMPLIFY_CONNECTION_NAME = 'toSimplify';
+export const TO_FILTER_CONNECTION_NAME = 'toFilter';
 
 // The locate phase might get the whole context, but, from a type perspective, it only needs the file
 export interface Input extends PhaseInput {
@@ -61,7 +62,7 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
     }
 
 
-    const transform = async (output: Output, context: Context): Promise<[SimplifyPhaseInput, Context]> => {
+    const transform = async (output: Output, context: Context): Promise<[FilterPhaseInput, Context]> => {
         context = {
             ...context,
             creationTime: output.creationTime,
@@ -85,7 +86,7 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
     }
 
     const phase = createPhase(LOCATE_PHASE_NAME, { execute });
-    const connection = createConnection(TO_SIMPLIFY_CONNECTION_NAME, SIMPLIFY_PHASE_NODE_NAME, { transform });
+    const connection = createConnection(TO_FILTER_CONNECTION_NAME, FILTER_PHASE_NODE_NAME, { transform });
 
     const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
         const processedContext = {
