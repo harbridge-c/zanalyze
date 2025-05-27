@@ -1,4 +1,4 @@
-import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
+import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -12,7 +12,7 @@ import { Config as ZanalyzeConfig } from '../types';
 import { stringifyJSON } from '../util/general';
 import * as OpenAI from '../util/openai';
 import * as Storage from '../util/storage';
-import { Classifications } from './process';
+import { Classifications } from './classify';
 import { Events } from './sentry/event';
 import { People } from './sentry/person';
 import { Bills } from './sentry/bill';
@@ -34,7 +34,7 @@ export interface Input extends PhaseInput {
 };
 
 export interface Output extends PhaseOutput {
-    summary: string;
+    bill: string;
 };
 
 export interface BillPhase extends Phase<Input, Output> {
@@ -94,7 +94,7 @@ export const create = async (config: Config): Promise<BillPhaseNode> => {
         if (await storage.exists(billFilePath)) {
             logger.debug('Bill file already exists, skipping generation: %s', billFilePath);
             const existingBill = await storage.readFile(billFilePath, DEFAULT_CHARACTER_ENCODING);
-            return { summary: existingBill };
+            return { bill: existingBill };
         }
 
         const prompt = await prompts.createBillPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.events, input.people, input.classifications, input.bills);
@@ -109,12 +109,11 @@ export const create = async (config: Config): Promise<BillPhaseNode> => {
 
         logger.debug('Bill Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));
 
-
-
-
         await storage.writeFile(billFilePath, contextCompletion.bill, DEFAULT_CHARACTER_ENCODING);
 
-        return contextCompletion;
+        return {
+            bill: contextCompletion.bill,
+        };
     }
 
     const billPhase = createPhase(
@@ -124,10 +123,22 @@ export const create = async (config: Config): Promise<BillPhaseNode> => {
         }
     );
 
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
+            ...context,
+            ...output,
+        };
+
+        return [output, processedContext];
+    }
+
     // No next connections by default; will be connected from sentry
     const billPhaseNode = createPhaseNode(
         BILL_PHASE_NODE_NAME,
-        billPhase
+        billPhase,
+        {
+            process,
+        }
     ) as BillPhaseNode;
 
     return billPhaseNode;

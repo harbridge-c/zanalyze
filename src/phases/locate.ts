@@ -1,6 +1,6 @@
 import * as dreadcabinet from '@theunwalked/dreadcabinet';
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
+import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
 import path from 'path';
 import * as Logging from '../logging';
 import { Config } from '../types';
@@ -91,7 +91,18 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
 
     const phase = createPhase(LOCATE_PHASE_NAME, { execute });
     const connection = createConnection(TO_SIMPLIFY_CONNECTION_NAME, SIMPLIFY_PHASE_NODE_NAME, { transform });
+
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
+            ...context,
+            ...output,
+        };
+
+        return [output, processedContext];
+    }
+
     return createPhaseNode(LOCATE_PHASE_NODE_NAME, phase, {
-        next: [connection]
+        next: [connection],
+        process,
     });
 }

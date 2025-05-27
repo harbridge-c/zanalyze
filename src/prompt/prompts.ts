@@ -1,11 +1,29 @@
 import { Builder, createParameters, Model, Parameters, Prompt } from '@riotprompt/riotprompt';
 import path from 'path';
-import { Classifications } from '../phases/process';
+import { Classifications } from '../phases/classify';
 import { Events } from '../phases/sentry/event';
 import { People } from '../phases/sentry/person';
 import { Transactions } from '../phases/sentry/receipt';
 import { fileURLToPath } from 'url';
-import { DEFAULT_CHARACTER_ENCODING, DEFAULT_INSTRUCTIONS_CLASSIFY_FILE, DEFAULT_INSTRUCTIONS_EVENT_SENTRY_FILE, DEFAULT_INSTRUCTIONS_PERSON_SENTRY_FILE, DEFAULT_INSTRUCTIONS_RECEIPT_FILE, DEFAULT_INSTRUCTIONS_RECEIPT_SENTRY_FILE, DEFAULT_INSTRUCTIONS_SUMMARIZE_FILE, DEFAULT_PERSONA_CLASSIFIER_FILE, DEFAULT_PERSONA_EVENT_SENTRY_FILE, DEFAULT_PERSONA_PERSON_SENTRY_FILE, DEFAULT_PERSONA_RECEIPT_FILE, DEFAULT_PERSONA_RECEIPT_SENTRY_FILE, DEFAULT_PERSONA_SUMMARIZE_FILE, DEFAULT_PERSONA_BILL_SENTRY_FILE, DEFAULT_INSTRUCTIONS_BILL_SENTRY_FILE, DEFAULT_PERSONA_BILL_FILE, DEFAULT_INSTRUCTIONS_BILL_FILE } from '../constants';
+import {
+    DEFAULT_CHARACTER_ENCODING,
+    DEFAULT_INSTRUCTIONS_CLASSIFY_FILE,
+    DEFAULT_INSTRUCTIONS_SUMMARIZE_FILE,
+    DEFAULT_PERSONA_CLASSIFIER_FILE,
+    DEFAULT_PERSONA_SUMMARIZE_FILE,
+    DEFAULT_INSTRUCTIONS_BILL_FILE,
+    DEFAULT_PERSONA_BILL_FILE,
+    DEFAULT_INSTRUCTIONS_SENTRY_BILL_FILE,
+    DEFAULT_PERSONA_SENTRY_BILL_FILE,
+    DEFAULT_INSTRUCTIONS_SENTRY_EVENT_FILE,
+    DEFAULT_PERSONA_SENTRY_EVENT_FILE,
+    DEFAULT_INSTRUCTIONS_SENTRY_PERSON_FILE,
+    DEFAULT_PERSONA_SENTRY_PERSON_FILE,
+    DEFAULT_INSTRUCTIONS_SENTRY_RECEIPT_FILE,
+    DEFAULT_PERSONA_SENTRY_RECEIPT_FILE,
+    DEFAULT_PERSONA_RECEIPT_FILE,
+    DEFAULT_INSTRUCTIONS_RECEIPT_FILE
+} from '../constants';
 import { getLogger } from '../logging';
 import { Config } from '../types';
 import * as Storage from '../util/storage';
@@ -63,8 +81,8 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
             basePath: __dirname,
             overridePath: config.configDirectory,
         });
-        builder = await builder.addPersonaPath(DEFAULT_PERSONA_EVENT_SENTRY_FILE);
-        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_EVENT_SENTRY_FILE);
+        builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_EVENT_FILE);
+        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_EVENT_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });
@@ -83,8 +101,8 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
             basePath: __dirname,
             overridePath: config.configDirectory,
         });
-        builder = await builder.addPersonaPath(DEFAULT_PERSONA_PERSON_SENTRY_FILE);
-        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_PERSON_SENTRY_FILE);
+        builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_PERSON_FILE);
+        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_PERSON_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });
@@ -103,8 +121,8 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
             basePath: __dirname,
             overridePath: config.configDirectory,
         });
-        builder = await builder.addPersonaPath(DEFAULT_PERSONA_RECEIPT_SENTRY_FILE);
-        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_RECEIPT_SENTRY_FILE);
+        builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_RECEIPT_FILE);
+        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_RECEIPT_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });
@@ -122,8 +140,8 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
             basePath: __dirname,
             overridePath: config.configDirectory,
         });
-        builder = await builder.addPersonaPath(DEFAULT_PERSONA_BILL_SENTRY_FILE);
-        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_BILL_SENTRY_FILE);
+        builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_BILL_FILE);
+        builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_BILL_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });

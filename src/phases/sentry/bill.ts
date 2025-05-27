@@ -1,7 +1,7 @@
 import { Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { z } from 'zod';
-import { Classifications } from '../process';
+import { Classifications } from '../classify';
 import { createSentryPhaseNode } from './sentryPhaseFactory';
 
 export const BILL_SENTRY_PHASE_NAME = 'bill_sentry';
@@ -54,5 +54,4 @@ export const create = createSentryPhaseNode({
     outputKey: 'bills',
     schema: BillsSchema,
     promptFunctionName: 'createBillSentryPrompt',
-    responseFilePattern: 'bill_schema_response',
 }); 

@@ -1,5 +1,5 @@
 import { EmailAddress, EmlContent } from '@vortiq/eml-parse-js';
-import { Connection, Context, createConnection, createDecision, createPhase, createPhaseNode, createTermination, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, Termination } from '@maxdrellin/xenocline';
+import { Connection, Context, createConnection, createDecision, createPhase, createPhaseNode, createTermination, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, Termination } from '@maxdrellin/xenocline';
 import { getLogger } from '../logging';
 import { Config as ZanalyzeConfig } from '../types';
 import { CLASSIFY_PHASE_NODE_NAME, Input as ClassifyPhaseInput } from './classify';
@@ -16,7 +16,8 @@ export interface Input extends PhaseInput {
 }
 
 export interface Output extends PhaseOutput {
-    include?: boolean;
+    include: boolean;
+    includeReason: string;
 }
 
 export type FilterPhase = Phase<Input, Output>;
@@ -28,6 +29,7 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
     const execute = async (input: Input): Promise<Output> => {
 
         let include = true;
+        let includeReason = 'Default Include';
 
         if (!input.eml) {
             throw new Error("eml is required for filter function");
@@ -36,6 +38,7 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
         if (!config.filters) {
             return {
                 include,
+                includeReason,
             };
         } else {
 
@@ -44,34 +47,40 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
                 logger.debug('Processing Include Filters...');
                 logger.debug('Since the include filters are defined, setting default for include result to false.');
                 include = false;
+                includeReason = 'Default Include set to False since include filters are defined';
 
                 const subjectFilters = config.filters?.include.subject?.map(subject => new RegExp(subject, 'i'));
                 const toFilters = config.filters?.include.to?.map(to => new RegExp(to, 'i'));
                 const fromFilters = config.filters?.include.from?.map(from => new RegExp(from, 'i'));
 
                 if (subjectFilters && input.eml.subject && subjectFilters.some((filter: RegExp) => filter.test(input.eml.subject))) {
-                    logger.info(`Including email with subject: ${input.eml.subject}`);
+                    logger.verbose(`Including email with subject: ${input.eml.subject}`);
                     include = true;
+                    includeReason = `Include filter matched subject: ${input.eml.subject}`;
                 }
 
                 if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.email)))) {
-                    logger.info(`Including email with to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`);
+                    logger.verbose(`Including email with to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`);
                     include = true;
+                    includeReason = `Include filter matched to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`;
                 }
 
                 if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.name)))) {
-                    logger.info(`Including email with to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`);
+                    logger.verbose(`Including email with to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`);
                     include = true;
+                    includeReason = `Include filter matched to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`;
                 }
 
                 if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.email)))) {
-                    logger.info(`Including email with from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`);
+                    logger.verbose(`Including email with from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`);
                     include = true;
+                    includeReason = `Include filter matched from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`;
                 }
 
                 if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.name)))) {
-                    logger.info(`Including email with from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`);
+                    logger.verbose(`Including email with from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`);
                     include = true;
+                    includeReason = `Include filter matched from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`;
                 }
 
 
@@ -84,28 +93,33 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
                 const fromFilters = config.filters?.exclude.from?.map(from => new RegExp(from, 'i'));
 
                 if (subjectFilters && input.eml.subject && subjectFilters.some((filter: RegExp) => filter.test(input.eml.subject))) {
-                    logger.info(`Filtering out email with subject: ${input.eml.subject}`);
+                    logger.verbose(`Filtering out email with subject: ${input.eml.subject}`);
                     include = false;
+                    includeReason = `Exclude filter matched subject: ${input.eml.subject}`;
                 }
 
                 if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.email)))) {
-                    logger.info(`Filtering out email with to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`);
+                    logger.verbose(`Filtering out email with to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`);
                     include = false;
+                    includeReason = `Exclude filter matched to email: ${input.eml.to.map((to: EmailAddress) => to.email).join(', ')}`;
                 }
 
                 if (toFilters && input.eml.to && toFilters.some((filter: RegExp) => input.eml.to.some((to: EmailAddress) => filter.test(to.name)))) {
-                    logger.info(`Filtering out email with to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`);
+                    logger.verbose(`Filtering out email with to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`);
                     include = false;
+                    includeReason = `Exclude filter matched to name: ${input.eml.to.map((to: EmailAddress) => to.name).join(', ')}`;
                 }
 
                 if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.email)))) {
-                    logger.info(`Filtering out email with from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`);
+                    logger.verbose(`Filtering out email with from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`);
                     include = false;
+                    includeReason = `Exclude filter matched from email: ${input.eml.from.map((from: EmailAddress) => from.email).join(', ')}`;
                 }
 
                 if (fromFilters && input.eml.from && fromFilters.some((filter: RegExp) => input.eml.from.some((from: EmailAddress) => filter.test(from.name)))) {
-                    logger.info(`Filtering out email with from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`);
+                    logger.verbose(`Filtering out email with from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`);
                     include = false;
+                    includeReason = `Exclude filter matched from name: ${input.eml.from.map((from: EmailAddress) => from.name).join(', ')}`;
                 }
             }
 
@@ -113,6 +127,7 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
 
         return {
             include,
+            includeReason,
         };
     }
 
@@ -120,6 +135,7 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
         context = {
             ...context,
             include: output.include,
+            includeReason: output.includeReason,
         };
 
         // TODO: Ok, so the output of a phase might control the execution.  Does this happen in the connection?
@@ -169,7 +185,6 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
         const connection = createConnection('toClassify', CLASSIFY_PHASE_NODE_NAME, { transform });
         if (output.include) {
             return [connection];
-
         } else {
             const termination = createTermination('filtered');
             return termination;
@@ -179,7 +194,18 @@ export const create = async (config: Config): Promise<FilterPhaseNode> => {
     const phase = createPhase(FILTER_PHASE_NAME, { execute });
     const decision = createDecision(FILTER_DECISION_NAME, decide);
 
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
+            ...context,
+            ...output,
+        };
+
+        return [output, processedContext];
+    }
+
+
     return createPhaseNode(FILTER_PHASE_NODE_NAME, phase, {
-        next: [decision]
+        next: [decision],
+        process,
     });
 }

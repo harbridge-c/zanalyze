@@ -1,10 +1,9 @@
 import { Process, Context as ProcessContext, createProcess } from '@maxdrellin/xenocline';
 import * as dreadcabinet from '@theunwalked/dreadcabinet';
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { z } from 'zod';
 import { Config } from '../types';
 import { BILL_PHASE_NODE_NAME, BillPhaseNode, create as createBillNode } from './bill';
-import { CLASSIFY_PHASE_NODE_NAME, ClassifyPhaseNode, create as createClassifyNode } from './classify';
+import { CLASSIFY_PHASE_NODE_NAME, Classifications, ClassifyPhaseNode, create as createClassifyNode } from './classify';
 import { FILTER_PHASE_NODE_NAME, FilterPhaseNode, create as createFilterNode } from './filter';
 import { LOCATE_PHASE_NODE_NAME, LocatePhaseNode, create as createLocateNode } from './locate';
 import { RECEIPT_PHASE_NODE_NAME, ReceiptPhaseNode, create as createReceiptNode } from './receipt';
@@ -17,17 +16,6 @@ import { SIMPLIFY_PHASE_NODE_NAME, SimplifyPhaseNode, create as createSimplifyNo
 import { SUMMARIZE_PHASE_NODE_NAME, SummarizePhaseNode, create as createSummarizeNode } from './summarize';
 
 export const PROCESS_NAME = 'Process';
-
-export const ClassificationSchema = z.object({
-    coordinate: z.array(z.string()),
-    strength: z.number(),
-    reason: z.string(),
-});
-
-export const ClassificationsSchema = z.array(ClassificationSchema);
-
-export type Classification = z.infer<typeof ClassificationSchema>;
-export type Classifications = z.infer<typeof ClassificationsSchema>;
 
 export interface Context extends ProcessContext {
     //  These are the values that are created by the Create phase
@@ -51,7 +39,9 @@ export interface Context extends ProcessContext {
     people?: People;
     bills?: Bills;
     transactions?: Transactions;
-
+    summary?: string;
+    receipt?: string;
+    bill?: string;
 }
 
 export interface ClassifiedTranscription {

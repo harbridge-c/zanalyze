@@ -5,7 +5,7 @@ import { SUMMARIZE_PHASE_NODE_NAME } from '../summarize';
 import { getLogger } from '../../logging';
 import { Config as ZanalyzeConfig } from '../../types';
 import { BILL_PHASE_NODE_NAME } from '../bill';
-import { Classifications } from '../process';
+import { Classifications } from '../classify';
 import { Events } from './event';
 import { People } from './person';
 import { Transactions } from './receipt';

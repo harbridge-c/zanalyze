@@ -1,4 +1,4 @@
-import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
+import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -12,10 +12,10 @@ import { Config as ZanalyzeConfig } from '../types';
 import { stringifyJSON } from '../util/general';
 import * as OpenAI from '../util/openai';
 import * as Storage from '../util/storage';
-import { Classifications } from './process';
 import { Events } from './sentry/event';
 import { People } from './sentry/person';
 import { Transactions } from './sentry/receipt';
+import { Classifications } from './classify';
 
 export const RECEIPT_PHASE_NAME = 'receipt';
 export const RECEIPT_PHASE_NODE_NAME = 'receipt_node';
@@ -34,7 +34,7 @@ export interface Input extends PhaseInput {
 };
 
 export interface Output extends PhaseOutput {
-    summary: string;
+    receipt: string;
 };
 
 export interface ReceiptPhase extends Phase<Input, Output> {
@@ -95,7 +95,7 @@ export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
         if (await storage.exists(receiptFilePath)) {
             logger.debug('Receipt file already exists, skipping generation: %s', receiptFilePath);
             const existingReceipt = await storage.readFile(receiptFilePath, DEFAULT_CHARACTER_ENCODING);
-            return { summary: existingReceipt };
+            return { receipt: existingReceipt };
         }
 
         const prompt = await prompts.createReceiptPrompt(input.eml.text || input.eml.html || '', input.eml.headers, input.events, input.people, input.classifications, input.transactions);
@@ -112,7 +112,9 @@ export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
 
         await storage.writeFile(receiptFilePath, contextCompletion.receipt, DEFAULT_CHARACTER_ENCODING);
 
-        return contextCompletion;
+        return {
+            receipt: contextCompletion.receipt,
+        };
     }
 
     const receiptPhase = createPhase(
@@ -122,10 +124,22 @@ export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
         }
     );
 
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
+            ...context,
+            ...output,
+        };
+
+        return [output, processedContext];
+    }
+
     // No next connections by default; will be connected from event/person sentry
     const receiptPhaseNode = createPhaseNode(
         RECEIPT_PHASE_NODE_NAME,
-        receiptPhase
+        receiptPhase,
+        {
+            process,
+        }
     ) as ReceiptPhaseNode;
 
     return receiptPhaseNode;

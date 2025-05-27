@@ -1,5 +1,5 @@
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
+import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
 import { getLogger } from '../logging';
 import { Config } from '../types';
 import { FILTER_PHASE_NODE_NAME, Input as FilterPhaseInput } from './filter';
@@ -94,8 +94,19 @@ export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
 
     const phase = createPhase(SIMPLIFY_PHASE_NAME, { execute });
     const connection = createConnection(TO_FILTER_CONNECTION_NAME, FILTER_PHASE_NODE_NAME, { transform });
+
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
+            ...context,
+            ...output,
+        };
+
+        return [output, processedContext];
+    }
+
     return createPhaseNode(SIMPLIFY_PHASE_NODE_NAME, phase, {
-        next: [connection]
+        next: [connection],
+        process,
     });
 }
 

@@ -1,4 +1,4 @@
-import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
+import { AggregationResult, Aggregator, AggregatorNode, Context, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod } from '@maxdrellin/xenocline';
 import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -12,7 +12,7 @@ import { Config as ZanalyzeConfig } from '../types';
 import { stringifyJSON } from '../util/general';
 import * as OpenAI from '../util/openai';
 import * as Storage from '../util/storage';
-import { Classifications } from './process';
+import { Classifications } from './classify';
 import { Events } from './sentry/event';
 import { People } from './sentry/person';
 
@@ -107,7 +107,9 @@ export const create = async (config: Config): Promise<SummarizePhaseNode> => {
 
         await storage.writeFile(summaryFilePath, contextCompletion.summary, DEFAULT_CHARACTER_ENCODING);
 
-        return contextCompletion;
+        return {
+            summary: contextCompletion.summary,
+        };
     }
 
     const summarizePhase = createPhase(
@@ -117,10 +119,22 @@ export const create = async (config: Config): Promise<SummarizePhaseNode> => {
         }
     );
 
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
+            ...context,
+            ...output,
+        };
+
+        return [output, processedContext];
+    }
+
     // No next connections by default; will be connected from event/person sentry
     const summarizePhaseNode = createPhaseNode(
         SUMMARIZE_PHASE_NODE_NAME,
-        summarizePhase
+        summarizePhase,
+        {
+            process,
+        }
     ) as SummarizePhaseNode;
 
     return summarizePhaseNode;
