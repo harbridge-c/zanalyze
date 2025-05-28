@@ -60,7 +60,7 @@ export const DEFAULT_FILTERS: FiltersConfig = {
 
 export const DEFAULT_SIMPLIFY: SimplifyConfig = {
     headers: [
-        '^GmExport-.*$',
+        '^gmlift-.*$',
         '^Received-SPF$',
         '^Authentication-Results$',
         '^Date$',
