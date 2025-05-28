@@ -23,7 +23,8 @@ import {
     VERSION
 } from './constants';
 import { ExitError } from './error/ExitError';
-import { getLogger, setLogLevel } from './logging';
+import { getLogger, setLogLevel, initLogging } from './logging';
+import path from 'path';
 import * as Processor from './processor';
 import { Config, ConfigSchema, DateRange } from './types';
 export async function main() {
@@ -94,6 +95,7 @@ export async function main() {
     }
 
     const logger = getLogger();
+    initLogging();
     dreadcabinet.setLogger(logger);
 
     logger.debug('Debug logging enabled');
@@ -105,14 +107,29 @@ export async function main() {
 
         // TODO: Integrate dreadcabinet operator with your EML processing logic
         // Example: Iterate through files using the operator
+        const processedFiles: string[] = [];
+        let successCount = 0;
+        let errorCount = 0;
+
         await operator.process(async (file: string) => {
-            //     // Your EML processing logic for 'file' here
-            logger.info(`Processing file: ${file}`);
-            await processor.process(file);
+            logger.verbose(`Processing file: ${file}`);
+            try {
+                await processor.process(file);
+                processedFiles.push(file);
+                successCount++;
+            } catch (err: any) {
+                errorCount++;
+                logger.warn(`Failed to process ${file}: ${err.message}`);
+            }
             return;
         }, { start: dateRange.start, end: dateRange.end }, 3);
 
-        logger.info('Processing complete (Placeholder - dreadcabinet operator not yet used).');
+        const total = successCount + errorCount;
+        logger.info(`Processed ${total} files (${successCount} successful, ${errorCount} errors)`);
+        if (config.verbose && processedFiles.length > 0) {
+            const sample = processedFiles.slice(0, 3).map(f => path.basename(f));
+            logger.info(`First ${sample.length}: ${sample.join(', ')}`);
+        }
         // --- End dreadcabinet Operation ---
 
     } catch (error: any) {
@@ -124,3 +141,4 @@ export async function main() {
         process.exit(1);
     }
 }
+

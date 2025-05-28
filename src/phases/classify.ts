@@ -93,7 +93,7 @@ export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
     );
 
     const createConnections = (): Connection<Output, Context>[] => {
-        logger.info('Classify Phase Transform');
+        logger.debug('Classify Phase Transform');
 
         const transform = async (output: Output, context: Context): Promise<[Input, Context]> => {
             const input: Input = {

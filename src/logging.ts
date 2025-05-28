@@ -58,4 +58,27 @@ export const setLogLevel = (level: string) => {
     logger = createLogger(level);
 };
 
-export const getLogger = () => logger; 
+export const getLogger = () => logger;
+
+export const initLogging = () => {
+    process.on('warning', (warning) => {
+        if (warning.name === 'DeprecationWarning') {
+            if (['debug', 'silly'].includes(logger.level)) {
+                logger.debug(warning.message);
+            }
+        } else {
+            logger.warn(warning.message);
+        }
+    });
+
+    const originalWarn = console.warn;
+    console.warn = (...args: any[]) => {
+        const message = args.join(' ');
+        if (message.includes('Multipart without boundary')) {
+            logger.debug(message);
+        } else {
+            originalWarn(...args);
+        }
+    };
+};
+
