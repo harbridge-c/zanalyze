@@ -26,6 +26,7 @@ import { ExitError } from './error/ExitError';
 import { getLogger, setLogLevel } from './logging';
 import * as Processor from './processor';
 import { Config, ConfigSchema, DateRange } from './types';
+import { createStatus } from './util/status';
 export async function main() {
 
     // eslint-disable-next-line no-console
@@ -102,15 +103,18 @@ export async function main() {
         // --- dreadcabinet Operation ---
         const operator: DreadCabinet.Operator = await dreadcabinet.operate(config);
         const processor: Processor.Instance = await Processor.create(config, operator);
+        const status = createStatus();
 
         // TODO: Integrate dreadcabinet operator with your EML processing logic
         // Example: Iterate through files using the operator
         await operator.process(async (file: string) => {
-            //     // Your EML processing logic for 'file' here
-            logger.info(`Processing file: ${file}`);
+            status.update(`Processing file: ${file}`);
             await processor.process(file);
+            status.increment();
             return;
         }, { start: dateRange.start, end: dateRange.end });
+
+        status.summary();
 
         logger.info('Processing complete (Placeholder - dreadcabinet operator not yet used).');
         // --- End dreadcabinet Operation ---
