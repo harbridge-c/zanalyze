@@ -46,5 +46,12 @@ I would like the output of this summary to follow this output format:
 
     ### Details
 
-    If the email is about a personal topic or a topic that is related to family or friends.  Please include more detail about the email.  If it is an email that is important for me to read, I want to know all of the details contained in the email.
+    If the email contains extensive content — such as multiple sections, steps, explanations, or embedded links — this section should extract and reflect **the full scope of that content**, not just a brief summary.
 
+    Include **multiple paragraphs** when needed to reflect the structure and richness of the original email. Think of this section as a **narrative unpacking** of the email for someone who doesn’t have time to read the original, but still needs to understand all major points, options, and references.
+
+    Where appropriate, preserve **original phrasing, lists, and step-by-step content**. You may paraphrase or condense slightly, but do not reduce the email to a single summary sentence. If the email includes instructions, resources, event descriptions, offers, or persuasive arguments, reflect them **in full paragraphs or bullet structures**.
+
+    This section should feel like a **readable walkthrough** of the email’s key sections and substance — not just a reiteration of the summary.
+    
+    Aim to include all meaningful sections from the email, up to 5–6 paragraphs, or roughly 500–700 words max.
