@@ -19,7 +19,6 @@ export const SENTRY_DECISION_NAME = 'sentry_decision';
 export interface Input extends PhaseInput {
     eml: EmlContent;
     outputPath: string;
-    detailPath: string;
     hash: string;
     filename: string;
     contextPath: string;
@@ -33,7 +32,6 @@ export interface Input extends PhaseInput {
 export interface Output extends PhaseOutput {
     eml: EmlContent;
     outputPath: string;
-    detailPath: string;
     hash: string;
     filename: string;
     contextPath: string;

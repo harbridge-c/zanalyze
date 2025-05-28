@@ -52,8 +52,8 @@ export interface ClassifiedTranscription {
 
 export const create = async (config: Config, operator: dreadcabinet.Operator): Promise<Process> => {
     const locateNode: LocatePhaseNode = await createLocateNode(config, operator);
-    const simplifyNode: SimplifyPhaseNode = await createSimplifyNode(config);
     const filterNode: FilterPhaseNode = await createFilterNode(config);
+    const simplifyNode: SimplifyPhaseNode = await createSimplifyNode(config);
     const classifyNode: ClassifyPhaseNode = await createClassifyNode(config);
     const eventSentryNode: EventSentryPhaseNode = await createEventSentryNode(config);
     const personSentryNode: PersonSentryPhaseNode = await createPersonSentryNode(config);

@@ -25,7 +25,6 @@ export const SUMMARIZE_AGGREGATOR_NODE_NAME = 'summarize_aggregator_node';
 export interface Input extends PhaseInput {
     eml: EmlContent;
     outputPath: string;
-    detailPath: string;
     hash: string;
     filename: string;
     contextPath: string;

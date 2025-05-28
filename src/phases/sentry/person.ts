@@ -24,7 +24,6 @@ export interface Input extends PhaseInput {
     eml: EmlContent;
     classifications: Classifications;
     outputPath: string;
-    detailPath: string;
     hash: string;
     filename: string;
     contextPath: string;
