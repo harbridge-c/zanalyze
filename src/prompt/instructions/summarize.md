@@ -28,7 +28,7 @@ I would like the output of this summary to follow this output format:
 
     Categories:
 
-    I want a short list of categories this was classified into, sort by strength
+    List each classification as a `->` joined hierarchy using the `coordinate` array (e.g., "personal -> memberships -> event_participation"). Sort by strength, and do not include the strength values in the output.
 
     ### Subject: Subject Header
 
@@ -47,3 +47,4 @@ I would like the output of this summary to follow this output format:
     ### Details
 
     If the email is about a personal topic or a topic that is related to family or friends.  Please include more detail about the email.  If it is an email that is important for me to read, I want to know all of the details contained in the email.
+
