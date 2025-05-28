@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import winston from 'winston';
 import { DATE_FORMAT_YEAR_MONTH_DAY_HOURS_MINUTES_SECONDS, PROGRAM_NAME } from './constants';
 
@@ -71,6 +72,7 @@ export const initLogging = () => {
         }
     });
 
+    // Suppress Multipart without boundary warnings
     const originalWarn = console.warn;
     console.warn = (...args: any[]) => {
         const message = args.join(' ');

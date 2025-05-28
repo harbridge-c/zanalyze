@@ -43,7 +43,7 @@ export const ALLOWED_OUTPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as Fi
 export const ALLOWED_EMAIL_EXTENSIONS = ['eml'] as string[];
 
 export const DEFAULT_EMAIL_EXTENSIONS = ['eml'] as string[];
-export const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini'] as string[];
+export const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'] as string[];
 
 export const DEFAULT_FILTERS: FiltersConfig = {
     include: {

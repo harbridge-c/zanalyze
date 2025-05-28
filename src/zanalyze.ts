@@ -131,7 +131,6 @@ export async function main() {
             logger.info(`First ${sample.length}: ${sample.join(', ')}`);
         }
         // --- End dreadcabinet Operation ---
-
     } catch (error: any) {
         if (error instanceof ExitError) {
             logger.error('Exiting due to Error');

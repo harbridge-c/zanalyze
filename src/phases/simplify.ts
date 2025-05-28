@@ -74,7 +74,7 @@ export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
 
         // --- HTML to Text Conversion ---
         if (!eml.text && eml.html) {
-            logger.info('No text found in EML, converting HTML to text using OpenAI');
+            logger.debug('No text found in EML, converting HTML to text using OpenAI');
             const prompts = await Prompt.create(config.model as Chat.Model, config);
             const html2textPrompt = await prompts.createHtml2TextPrompt(eml.html);
             const formatter = Formatter.create({ logger });
