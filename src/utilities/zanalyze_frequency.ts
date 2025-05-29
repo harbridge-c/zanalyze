@@ -37,8 +37,6 @@ const storage = createStorage({
     }
 });
 
-type AddressHeader = 'from' | 'to' | 'cc' | 'bcc';
-
 function extractHeaderValuesFromEml(eml: any, header: string): string[] {
     const key = header.toLowerCase();
     if (["from", "to", "cc", "bcc"].includes(key)) {
