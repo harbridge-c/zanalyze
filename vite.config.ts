@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import { VitePluginNode } from 'vite-plugin-node';
 import replace from '@rollup/plugin-replace';
-// import { visualizer } from 'rollup-plugin-visualizer';
 import { execSync } from 'child_process';
 import shebang from 'rollup-plugin-preserve-shebang';
 
