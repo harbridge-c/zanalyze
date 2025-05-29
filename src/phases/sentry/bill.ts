@@ -39,14 +39,6 @@ export interface Output extends PhaseOutput {
 
 export type BillSentryPhaseNode = PhaseNode<Input, Output>;
 
-export type Config = {
-    classifyModel: string;
-    configDirectory: string;
-    overrides: any;
-    model: string;
-    debug: boolean;
-};
-
 export const create = createSentryPhaseNode({
     phaseName: BILL_SENTRY_PHASE_NAME,
     phaseNodeName: BILL_SENTRY_PHASE_NODE_NAME,

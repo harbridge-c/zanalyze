@@ -34,7 +34,7 @@ export interface ClassifyPhaseNode extends PhaseNode<Input, Output> {
     phase: ClassifyPhase;
 }
 
-export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>;
+export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'debug' | 'contextDirectories'>;
 
 export const ClassificationSchema = z.object({
     coordinate: z.array(z.string()),
@@ -50,7 +50,7 @@ export type Classifications = z.infer<typeof ClassificationsSchema>;
 export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
     const logger = getLogger();
 
-    const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
+    const prompts = await Prompt.create(config.classifyModel as Chat.Model, config.configDirectory, config.overrides, { contextDirectories: config.contextDirectories });
 
     const verify = async (input: Input): Promise<VerifyMethodResponse> => {
         const response: VerifyMethodResponse = {
@@ -72,7 +72,7 @@ export const create = async (config: Config): Promise<ClassifyPhaseNode> => {
         const prompt = await prompts.createClassificationPrompt(input.eml.text || input.eml.html || '', input.eml.headers);
         // Generate classification prompt using the transcription text
         const formatter = Formatter.create({ logger });
-        const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
+        const chatRequest: Chat.Request = formatter.formatPrompt(config.classifyModel as Chat.Model, prompt);
 
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
             responseFormat: zodResponseFormat(z.object({ classifications: ClassificationsSchema }), 'classifications'),

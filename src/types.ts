@@ -60,9 +60,9 @@ export const ConfigSchema = z.object({
 });
 
 export const JobConfigSchema = z.object({
-    currentMonth: z.boolean(),
-    start: z.string(),
-    end: z.string(),
+    currentMonth: z.boolean().optional(),
+    start: z.string().optional(),
+    end: z.string().optional(),
 });
 
 export const SecureConfigSchema = ConfigSchema.extend({

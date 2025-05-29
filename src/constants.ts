@@ -26,6 +26,7 @@ export const DEFAULT_DEBUG = false;
 export const DEFAULT_SILLY = false;
 export const DEFAULT_DRY_RUN = false;
 export const DEFAULT_MODEL = 'gpt-4o';
+export const DEFAULT_CLASSIFY_MODEL = 'gpt-4o-mini';
 export const DEFAULT_REPLACE = false;
 export const DEFAULT_CONTEXT_DIRECTORY = './context';
 export const DEFAULT_INPUT_DIRECTORY = './input';
@@ -43,7 +44,6 @@ export const ALLOWED_OUTPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as Fi
 export const ALLOWED_EMAIL_EXTENSIONS = ['eml'] as string[];
 
 export const DEFAULT_EMAIL_EXTENSIONS = ['eml'] as string[];
-export const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'] as string[];
 
 export const DEFAULT_FILTERS: FiltersConfig = {
     include: {

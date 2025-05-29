@@ -20,9 +20,9 @@ interface SentryPhaseFactoryOptions {
 }
 
 export function createSentryPhaseNode(options: SentryPhaseFactoryOptions) {
-    return async (config: Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>) => {
+    return async (config: Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'debug' | 'contextDirectories'>) => {
         const logger = getLogger();
-        const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
+        const prompts = await Prompt.create(config.classifyModel as Chat.Model, config.configDirectory, config.overrides, { contextDirectories: config.contextDirectories });
 
         const verify = async (input: any): Promise<VerifyMethodResponse> => {
             const response: VerifyMethodResponse = {
@@ -54,7 +54,7 @@ export function createSentryPhaseNode(options: SentryPhaseFactoryOptions) {
                 input.classifications
             );
             const formatter = Formatter.create({ logger });
-            const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, prompt);
+            const chatRequest: Chat.Request = formatter.formatPrompt(config.classifyModel as Chat.Model, prompt);
             const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
                 responseFormat: zodResponseFormat(z.object({ [options.outputKey]: options.schema }), String(options.outputKey)),
                 model: config.classifyModel,

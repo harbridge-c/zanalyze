@@ -35,13 +35,6 @@ export interface Output extends PhaseOutput {
 
 export type PersonSentryPhaseNode = PhaseNode<Input, Output>;
 
-export type Config = {
-    classifyModel: string;
-    configDirectory: string;
-    overrides: any;
-    model: string;
-    debug: boolean;
-};
 
 export const create = createSentryPhaseNode({
     phaseName: PERSON_SENTRY_PHASE_NAME,

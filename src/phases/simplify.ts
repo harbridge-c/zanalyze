@@ -3,7 +3,7 @@ import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
 import { getLogger } from '../logging';
 import * as Prompt from '../prompt/prompts';
-import { Config } from '../types';
+import { Config as ZanalyzeConfig } from '../types';
 import * as OpenAI from '../util/openai';
 import { CLASSIFY_PHASE_NODE_NAME } from './classify';
 import { Input as ClassifyPhaseInput } from './classify';
@@ -23,6 +23,8 @@ export interface Output extends PhaseOutput {
 
 export type SimplifyPhase = Phase<Input, Output>;
 export type SimplifyPhaseNode = PhaseNode<Input, Output>;
+
+export type Config = Pick<ZanalyzeConfig, 'configDirectory' | 'overrides' | 'model' | 'debug' | 'simplify' | 'contextDirectories'>;
 
 export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
     const logger = getLogger();
@@ -75,7 +77,7 @@ export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
         // --- HTML to Text Conversion ---
         if (!eml.text && eml.html) {
             logger.debug('No text found in EML, converting HTML to text using OpenAI');
-            const prompts = await Prompt.create(config.model as Chat.Model, config);
+            const prompts = await Prompt.create(config.model as Chat.Model, config.configDirectory, config.overrides, { contextDirectories: config.contextDirectories });
             const html2textPrompt = await prompts.createHtml2TextPrompt(eml.html);
             const formatter = Formatter.create({ logger });
             const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, html2textPrompt);

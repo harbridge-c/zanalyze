@@ -81,8 +81,6 @@ An example of what an output directory might look like (assuming a "month" struc
     │   │   ├── <hash1>_output_some_subject.json
     │   │   ├── .context/
     │   │   │   └── <hash1>_context_some_subject.json
-    │   │   ├── .detail/
-    │   │   │   └── ... (detailed processing artifacts)
     │   │   ├── <hash2>_output_another_subject.json
     │   │   ├── .context/
     │   │   │   └── <hash2>_context_another_subject.json

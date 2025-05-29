@@ -1,36 +1,35 @@
-import { jest } from '@jest/globals';
+import { vi, describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
 // Mock the fs module
 var fs: {
     promises: {
-        stat: jest.Mock<() => Promise<any>>,
-        access: jest.Mock<() => Promise<void>>,
-        mkdir: jest.Mock<() => Promise<void>>,
-        readFile: jest.Mock<() => Promise<string>>,
-        writeFile: jest.Mock<() => Promise<void>>,
-        lstatSync: jest.Mock<() => Promise<any>>,
-        readdir: jest.Mock<() => Promise<string[]>>,
+        stat: ReturnType<typeof vi.fn>,
+        access: ReturnType<typeof vi.fn>,
+        mkdir: ReturnType<typeof vi.fn>,
+        readFile: ReturnType<typeof vi.fn>,
+        writeFile: ReturnType<typeof vi.fn>,
+        lstatSync: ReturnType<typeof vi.fn>,
+        readdir: ReturnType<typeof vi.fn>,
     },
     constants: {
         R_OK: number,
         W_OK: number
     },
-    createReadStream: jest.Mock<() => any>,
+    createReadStream: ReturnType<typeof vi.fn>,
 };
 
 // Mock the fs module
-const mockGlob = jest.fn<() => Promise<any>>();
-const mockStat = jest.fn<() => Promise<any>>();
-const mockAccess = jest.fn<() => Promise<void>>();
-const mockMkdir = jest.fn<() => Promise<void>>();
-const mockReadFile = jest.fn<() => Promise<string>>();
-const mockWriteFile = jest.fn<() => Promise<void>>();
-const mockLstatSync = jest.fn<() => Promise<any>>();
-const mockReaddir = jest.fn<() => Promise<string[]>>();
-const mockCreateReadStream = jest.fn<() => any>();
+const mockGlob = vi.fn<() => Promise<any>>();
+const mockStat = vi.fn<() => Promise<any>>();
+const mockAccess = vi.fn<() => Promise<void>>();
+const mockMkdir = vi.fn<() => Promise<void>>();
+const mockReadFile = vi.fn<() => Promise<string>>();
+const mockWriteFile = vi.fn<() => Promise<void>>();
+const mockLstatSync = vi.fn<() => Promise<any>>();
+const mockReaddir = vi.fn<() => Promise<string[]>>();
+const mockCreateReadStream = vi.fn<() => any>();
 
-jest.unstable_mockModule('fs', () => ({
-    __esModule: true,
+vi.mock('fs', () => ({
     promises: {
         stat: mockStat,
         access: mockAccess,
@@ -49,17 +48,15 @@ jest.unstable_mockModule('fs', () => ({
 
 // Mock crypto module
 const mockCrypto = {
-    createHash: jest.fn(),
+    createHash: vi.fn(),
 };
 
-jest.unstable_mockModule('crypto', () => ({
-    __esModule: true,
+vi.mock('crypto', () => ({
     default: mockCrypto,
     createHash: mockCrypto.createHash
 }));
 
-jest.unstable_mockModule('glob', () => ({
-    __esModule: true,
+vi.mock('glob', () => ({
     glob: mockGlob
 }));
 
@@ -68,7 +65,7 @@ let storageModule: any;
 
 describe('Storage Utility', () => {
     // Mock for console.log
-    const mockLog = jest.fn();
+    const mockLog = vi.fn();
     let storage: any;
 
     beforeAll(async () => {
@@ -78,7 +75,7 @@ describe('Storage Utility', () => {
     });
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         storage = storageModule.create({ log: mockLog });
     });
 
@@ -357,7 +354,7 @@ describe('Storage Utility', () => {
     describe('Default logger', () => {
         it('should use console.log as default logger', async () => {
             const originalConsoleLog = console.log;
-            const mockConsoleLog = jest.fn();
+            const mockConsoleLog = vi.fn();
             console.log = mockConsoleLog;
 
             try {
@@ -427,7 +424,7 @@ describe('Storage Utility', () => {
 
     describe('readStream', () => {
         it('should create and return a readable stream', async () => {
-            const mockStream = { pipe: jest.fn() };
+            const mockStream = { pipe: vi.fn() };
             mockCreateReadStream.mockReturnValueOnce(mockStream);
 
             const result = await storage.readStream('/test/file.txt');
@@ -441,8 +438,8 @@ describe('Storage Utility', () => {
         it('should hash the file content correctly', async () => {
             const fileContent = 'test file content';
             const mockHash = {
-                update: jest.fn().mockReturnThis(),
-                digest: jest.fn().mockReturnValue('0123456789abcdef0123456789abcdef')
+                update: vi.fn().mockReturnThis(),
+                digest: vi.fn().mockReturnValue('0123456789abcdef0123456789abcdef')
             };
 
             mockReadFile.mockResolvedValueOnce(fileContent);
@@ -482,7 +479,7 @@ describe('Storage Utility', () => {
             // @ts-ignore
             mockGlob.mockResolvedValueOnce(['file1.txt', 'file2.txt']);
 
-            const callbackFn = jest.fn();
+            const callbackFn = vi.fn();
             await storage.forEachFileIn('/test/dir', callbackFn);
 
             expect(callbackFn).toHaveBeenCalledTimes(2);
@@ -494,7 +491,7 @@ describe('Storage Utility', () => {
             // @ts-ignore
             mockGlob.mockResolvedValueOnce(['doc1.pdf', 'doc2.pdf']);
 
-            const callbackFn = jest.fn();
+            const callbackFn = vi.fn();
             await storage.forEachFileIn('/test/dir', callbackFn, { pattern: '*.pdf' });
 
             expect(mockGlob).toHaveBeenCalledWith('*.pdf', expect.objectContaining({ cwd: '/test/dir' }));
@@ -504,7 +501,7 @@ describe('Storage Utility', () => {
         it('should throw error if glob fails', async () => {
             mockGlob.mockRejectedValueOnce(new Error('Glob error'));
 
-            const callbackFn = jest.fn();
+            const callbackFn = vi.fn();
             await expect(storage.forEachFileIn('/test/dir', callbackFn)).rejects.toThrow(
                 'Failed to glob pattern *'
             );

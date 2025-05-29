@@ -50,12 +50,12 @@ export interface SummarizeAggregatorNode extends AggregatorNode<PhaseOutput, Con
     aggregator: SummarizeAggregator;
 }
 
-export type Config = Pick<ZanalyzeConfig, 'classifyModel' | 'configDirectory' | 'overrides' | 'model' | 'debug'>;
+export type Config = Pick<ZanalyzeConfig, 'configDirectory' | 'overrides' | 'model' | 'debug' | 'contextDirectories'>;
 
 export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
     const logger = getLogger();
 
-    const prompts = await Prompt.create(config.classifyModel as Chat.Model, config as ZanalyzeConfig);
+    const prompts = await Prompt.create(config.model as Chat.Model, config.configDirectory, config.overrides, { contextDirectories: config.contextDirectories });
 
     const storage = Storage.create({ log: logger.debug });
 
@@ -119,7 +119,7 @@ export const create = async (config: Config): Promise<ReceiptPhaseNode> => {
         // The summary is a string, so we expect { summary: string }
         const contextCompletion = await OpenAI.createCompletion(chatRequest.messages as ChatCompletionMessageParam[], {
             responseFormat: zodResponseFormat(z.object({ receipt: z.string() }), 'receipt'),
-            model: config.classifyModel,
+            model: config.model,
         });
 
         logger.debug('Receipt Completion: \n\n%s\n\n', stringifyJSON(contextCompletion));

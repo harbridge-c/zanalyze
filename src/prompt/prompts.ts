@@ -27,8 +27,8 @@ import {
     DEFAULT_INSTRUCTIONS_HTML2TEXT_FILE
 } from '../constants';
 import { getLogger } from '../logging';
-import { Config } from '../types';
 import * as Storage from '../util/storage';
+import { clean } from '../util/general';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,8 +45,17 @@ export interface Factory {
     createHtml2TextPrompt: (html: string) => Promise<Prompt>;
 }
 
-export const create = async (model: Model, config: Config): Promise<Factory> => {
+export interface Options {
+    contextDirectories: string[];
+}
+
+const DEFAULT_OPTIONS: Options = {
+    contextDirectories: [],
+}
+
+export const create = async (model: Model, configDirectory: string, overrides: any, options?: Partial<Options>): Promise<Factory> => {
     const logger = getLogger();
+    const currentOptions = { ...DEFAULT_OPTIONS, ...clean(options) };
     const storage = Storage.create({ log: logger.debug });
     const taxonomy = await storage.readFile(path.join(__dirname, "../classification/taxonomy.yaml"), DEFAULT_CHARACTER_ENCODING);
     const taxonomyGuidance = await storage.readFile(path.join(__dirname, "../classification/taxonomy.md"), DEFAULT_CHARACTER_ENCODING);
@@ -60,17 +69,17 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
 
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
             parameters,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_CLASSIFIER_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_CLASSIFY_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
 
         const prompt = builder.build();
@@ -80,17 +89,17 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createEventSentryPrompt = async (text: string, headers: any, classifications: Classifications): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_EVENT_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_EVENT_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
 
         const prompt = builder.build();
@@ -100,17 +109,17 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createPersonSentryPrompt = async (text: string, headers: any, classifications: Classifications): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_PERSON_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_PERSON_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
 
         const prompt = builder.build();
@@ -120,17 +129,17 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createReceiptSentryPrompt = async (text: string, headers: any, classifications: Classifications): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_RECEIPT_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_RECEIPT_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
         const prompt = builder.build();
         return prompt;
@@ -139,17 +148,17 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createBillSentryPrompt = async (text: string, headers: any, classifications: Classifications): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_SENTRY_BILL_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SENTRY_BILL_FILE);
         builder = await builder.addContent(JSON.stringify(headers, null, 2), { title: 'headers' });
         builder = await builder.addContent(JSON.stringify(classifications, null, 2), { title: 'classifications' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
         const prompt = builder.build();
         return prompt;
@@ -158,9 +167,9 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createSummarizePrompt = async (text: string, headers: any, events: Events, people: People, classifications: Classifications): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_SUMMARIZE_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_SUMMARIZE_FILE);
@@ -169,8 +178,8 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
         builder = await builder.addContent(JSON.stringify(people, null, 2), { title: 'people' });
         builder = await builder.addContent(JSON.stringify(events, null, 2), { title: 'events' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
         const prompt = builder.build();
         return prompt;
@@ -179,9 +188,9 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createReceiptPrompt = async (text: string, headers: any, events: Events, people: People, classifications: Classifications, transactions: Transactions): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_RECEIPT_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_RECEIPT_FILE);
@@ -191,8 +200,8 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
         builder = await builder.addContent(JSON.stringify(people, null, 2), { title: 'people' });
         builder = await builder.addContent(JSON.stringify(events, null, 2), { title: 'events' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
         const prompt = builder.build();
         return prompt;
@@ -201,9 +210,9 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createBillPrompt = async (text: string, headers: any, events: Events, people: People, classifications: Classifications, bills: any): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_BILL_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_BILL_FILE);
@@ -213,8 +222,8 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
         builder = await builder.addContent(JSON.stringify(people, null, 2), { title: 'people' });
         builder = await builder.addContent(JSON.stringify(events, null, 2), { title: 'events' });
         builder = await builder.addContent(text, { title: 'email' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
         const prompt = builder.build();
         return prompt;
@@ -223,15 +232,15 @@ export const create = async (model: Model, config: Config): Promise<Factory> => 
     const createHtml2TextPrompt = async (html: string): Promise<Prompt> => {
         let builder: Builder.Instance = Builder.create({
             logger,
-            overrides: config.overrides,
+            overrides,
             basePath: __dirname,
-            overridePath: config.configDirectory,
+            overridePath: configDirectory,
         });
         builder = await builder.addPersonaPath(DEFAULT_PERSONA_HTML2TEXT_FILE);
         builder = await builder.addInstructionPath(DEFAULT_INSTRUCTIONS_HTML2TEXT_FILE);
         builder = await builder.addContent(html, { title: 'html' });
-        if (config.contextDirectories) {
-            builder = await builder.loadContext(config.contextDirectories);
+        if (currentOptions.contextDirectories && currentOptions.contextDirectories.length > 0) {
+            builder = await builder.loadContext(currentOptions.contextDirectories);
         }
         const prompt = builder.build();
         return prompt;
