@@ -52,13 +52,13 @@ importers:
         version: 0.6.0
       openai:
         specifier: 4.103.0
-        version: 4.103.0(zod@3.25.28)
+        version: 4.103.0(zod@3.25.36)
       winston:
         specifier: ^3.17.0
         version: 3.17.0
       zod:
-        specifier: 3.25.28
-        version: 3.25.28
+        specifier: 3.25.36
+        version: 3.25.36
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.3.1
@@ -3033,9 +3033,6 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@3.25.28:
-    resolution: {integrity: sha512-/nt/67WYKnr5by3YS7LroZJbtcCBurDKKPBPWWzaxvVCGuG/NOsiKkrjoOhI8mJ+SQUXEbUzeB3S+6XDUEEj7Q==}
-
   zod@3.25.36:
     resolution: {integrity: sha512-eRFS3i8T0IrpGdL8HQyqFAugGOn7jOjyGgGdtv5NY4Wkhi7lJDk732bNZ609YMIGFbLoaj6J69O1Mura23gfIw==}
 
@@ -3295,6 +3292,8 @@ snapshots:
       '@babel/core': 7.27.3
       '@babel/helper-create-class-features-plugin': 7.27.1(@babel/core@7.27.3)
       '@babel/helper-plugin-utils': 7.27.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@babel/plugin-transform-class-static-block@7.27.1(@babel/core@7.27.3)':
     dependencies:
@@ -5464,7 +5463,7 @@ snapshots:
     dependencies:
       fn.name: 1.1.0
 
-  openai@4.103.0(zod@3.25.28):
+  openai@4.103.0(zod@3.25.36):
     dependencies:
       '@types/node': 18.19.105
       '@types/node-fetch': 2.6.12
@@ -5474,7 +5473,7 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0
     optionalDependencies:
-      zod: 3.25.28
+      zod: 3.25.36
     transitivePeerDependencies:
       - encoding
 
@@ -6183,7 +6182,5 @@ snapshots:
       yargs-parser: 21.1.1
 
   yocto-queue@0.1.0: {}
-
-  zod@3.25.28: {}
 
   zod@3.25.36: {}
