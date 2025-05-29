@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import winston from 'winston';
 import { DATE_FORMAT_YEAR_MONTH_DAY_HOURS_MINUTES_SECONDS, PROGRAM_NAME } from './constants';
 
@@ -58,4 +59,28 @@ export const setLogLevel = (level: string) => {
     logger = createLogger(level);
 };
 
-export const getLogger = () => logger; 
+export const getLogger = () => logger;
+
+export const initLogging = () => {
+    process.on('warning', (warning) => {
+        if (warning.name === 'DeprecationWarning') {
+            if (['debug', 'silly'].includes(logger.level)) {
+                logger.debug(warning.message);
+            }
+        } else {
+            logger.warn(warning.message);
+        }
+    });
+
+    // Suppress Multipart without boundary warnings and undefined Content-Type warnings
+    const originalWarn = console.warn;
+    console.warn = (...args: any[]) => {
+        const message = args.join(' ');
+        if (message.includes('Multipart without boundary') || message.includes('undefined Content-Type')) {
+            logger.debug(message);
+        } else {
+            originalWarn(...args);
+        }
+    };
+};
+

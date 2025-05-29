@@ -1,7 +1,7 @@
 import { FilenameOption, FilesystemStructure } from "@theunwalked/dreadcabinet";
 import { Config, FiltersConfig, SimplifyConfig } from "./types";
 export const VERSION = '__VERSION__ (__GIT_BRANCH__/__GIT_COMMIT__ __GIT_TAGS__ __GIT_COMMIT_DATE__) __SYSTEM_INFO__';
-export const PROGRAM_NAME = 'crudzap';
+export const PROGRAM_NAME = 'zanalyze';
 export const DEFAULT_CHARACTER_ENCODING = 'utf-8';
 export const DEFAULT_BINARY_TO_TEXT_ENCODING = 'base64';
 export const DEFAULT_CONFIGURATION_DIRECTORY = `.${PROGRAM_NAME}`;
@@ -26,6 +26,7 @@ export const DEFAULT_DEBUG = false;
 export const DEFAULT_SILLY = false;
 export const DEFAULT_DRY_RUN = false;
 export const DEFAULT_MODEL = 'gpt-4o';
+export const DEFAULT_CLASSIFY_MODEL = 'gpt-4o-mini';
 export const DEFAULT_REPLACE = false;
 export const DEFAULT_CONTEXT_DIRECTORY = './context';
 export const DEFAULT_INPUT_DIRECTORY = './input';
@@ -43,7 +44,6 @@ export const ALLOWED_OUTPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as Fi
 export const ALLOWED_EMAIL_EXTENSIONS = ['eml'] as string[];
 
 export const DEFAULT_EMAIL_EXTENSIONS = ['eml'] as string[];
-export const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini'] as string[];
 
 export const DEFAULT_FILTERS: FiltersConfig = {
     include: {
@@ -60,7 +60,7 @@ export const DEFAULT_FILTERS: FiltersConfig = {
 
 export const DEFAULT_SIMPLIFY: SimplifyConfig = {
     headers: [
-        '^GmExport-.*$',
+        '^gmlift-.*$',
         '^Received-SPF$',
         '^Authentication-Results$',
         '^Date$',
@@ -76,7 +76,7 @@ export const DEFAULT_SIMPLIFY: SimplifyConfig = {
     skipAttachments: true,
 };
 
-export const CRUDZAP_DEFAULTS: Config = {
+export const ZANALYZE_DEFAULTS: Config = {
     model: DEFAULT_MODEL,
     verbose: DEFAULT_VERBOSE,
     debug: DEFAULT_DEBUG,
@@ -92,6 +92,15 @@ export const DEFAULT_PERSONAS_DIR = `/personas`;
 export const DEFAULT_PERSONA_YOU_FILE = `${DEFAULT_PERSONAS_DIR}/you.md`;
 export const DEFAULT_PERSONA_CLASSIFIER_FILE = `${DEFAULT_PERSONAS_DIR}/classifier.md`;
 export const DEFAULT_PERSONA_TRANSCRIBE_FILE = `${DEFAULT_PERSONAS_DIR}/transcribe.md`;
+export const DEFAULT_PERSONA_SUMMARIZE_FILE = `${DEFAULT_PERSONAS_DIR}/summarize.md`;
+export const DEFAULT_PERSONA_RECEIPT_FILE = `${DEFAULT_PERSONAS_DIR}/receipt.md`;
+export const DEFAULT_PERSONA_BILL_FILE = `${DEFAULT_PERSONAS_DIR}/bill.md`;
+export const DEFAULT_PERSONA_HTML2TEXT_FILE = `${DEFAULT_PERSONAS_DIR}/html2text.md`;
+
+export const DEFAULT_PERSONA_SENTRY_BILL_FILE = `${DEFAULT_PERSONAS_DIR}/sentry/bill.md`;
+export const DEFAULT_PERSONA_SENTRY_EVENT_FILE = `${DEFAULT_PERSONAS_DIR}/sentry/event.md`;
+export const DEFAULT_PERSONA_SENTRY_PERSON_FILE = `${DEFAULT_PERSONAS_DIR}/sentry/person.md`;
+export const DEFAULT_PERSONA_SENTRY_RECEIPT_FILE = `${DEFAULT_PERSONAS_DIR}/sentry/receipt.md`;
 
 export const DEFAULT_INSTRUCTIONS_DIR = `/instructions`;
 
@@ -100,3 +109,12 @@ export const DEFAULT_TYPE_INSTRUCTIONS_DIR = `${DEFAULT_INSTRUCTIONS_DIR}/types`
 export const DEFAULT_INSTRUCTIONS_CLASSIFY_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/classify.md`;
 export const DEFAULT_INSTRUCTIONS_COMPOSE_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/compose.md`;
 export const DEFAULT_INSTRUCTIONS_TRANSCRIBE_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/transcribe.md`;
+export const DEFAULT_INSTRUCTIONS_SUMMARIZE_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/summarize.md`;
+export const DEFAULT_INSTRUCTIONS_RECEIPT_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/receipt.md`;
+export const DEFAULT_INSTRUCTIONS_BILL_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/bill.md`;
+export const DEFAULT_INSTRUCTIONS_HTML2TEXT_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/html2text.md`;
+
+export const DEFAULT_INSTRUCTIONS_SENTRY_BILL_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/sentry/bill.md`;
+export const DEFAULT_INSTRUCTIONS_SENTRY_EVENT_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/sentry/event.md`;
+export const DEFAULT_INSTRUCTIONS_SENTRY_PERSON_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/sentry/person.md`;
+export const DEFAULT_INSTRUCTIONS_SENTRY_RECEIPT_FILE = `${DEFAULT_INSTRUCTIONS_DIR}/sentry/receipt.md`;

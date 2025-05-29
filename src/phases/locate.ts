@@ -1,16 +1,19 @@
+import { Connection, Context, createConnection, createDecision, createPhase, createPhaseNode, createTermination, Decision, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, Termination } from '@maxdrellin/xenocline';
 import * as dreadcabinet from '@theunwalked/dreadcabinet';
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
 import path from 'path';
 import * as Logging from '../logging';
 import { Config } from '../types';
 import { fromEml } from '../util/email';
 import * as Storage from '../util/storage';
-import { SIMPLIFY_PHASE_NODE_NAME, Input as SimplifyPhaseInput } from './simplify';
+import { FILTER_PHASE_NODE_NAME } from './filter';
+import { Input as FilterPhaseInput } from './filter';
 
 export const LOCATE_PHASE_NODE_NAME = 'locate_node';
 export const LOCATE_PHASE_NAME = 'locate';
-export const TO_SIMPLIFY_CONNECTION_NAME = 'toSimplify';
+export const TO_CHECK_EXISTING_CONNECTION_NAME = 'toCheckExisting';
+export const CHECK_EXISTING_DECISION_NAME = 'check_existing';
+export const SKIP_CONNECTION_NAME = 'skip_existing';
 
 // The locate phase might get the whole context, but, from a type perspective, it only needs the file
 export interface Input extends PhaseInput {
@@ -22,7 +25,6 @@ export interface Output extends PhaseOutput {
     creationTime: Date;
     outputPath: string;
     contextPath: string;
-    detailPath: string;
     hash: string;
     eml: EmlContent;
     filename: string;
@@ -30,6 +32,60 @@ export interface Output extends PhaseOutput {
 
 export type LocatePhase = Phase<Input, Output>;
 export type LocatePhaseNode = PhaseNode<Input, Output>;
+
+type CheckExistingDecision = Decision<Output, Context>;
+
+export const createCheckExistingDecision = async (): Promise<CheckExistingDecision> => {
+    const logger = Logging.getLogger();
+    const storage = Storage.create({ log: logger.debug });
+
+    const decide = async (output: Output): Promise<Termination<Output, Context> | Connection<Output, Context>[]> => {
+        // Construct the context file path
+        const contextFile = path.join(output.contextPath, `${output.filename}.json`);
+
+        // Check if the file exists
+        const exists = await storage.exists(contextFile);
+
+        if (exists) {
+            logger.info(`Context file already exists for ${output.filename}, skipping...`);
+            // Return a termination to skip this file
+            return createTermination<Output, Context>(SKIP_CONNECTION_NAME);
+        }
+
+        // File doesn't exist, continue to filter phase
+        logger.debug(`Context file does not exist for ${output.filename}, proceeding to filter...`);
+
+        // Transform function for the connection
+        const transform = async (output: Output, context: Context): Promise<[FilterPhaseInput, Context]> => {
+            context = {
+                ...context,
+                creationTime: output.creationTime,
+                outputPath: output.outputPath,
+                contextPath: output.contextPath,
+                hash: output.hash,
+                filename: output.filename,
+                eml: output.eml,
+            };
+
+            if (!context.eml) {
+                throw new Error('eml is required for filter phase');
+            }
+
+            return [
+                {
+                    eml: context.eml as EmlContent,
+                },
+                context,
+            ];
+        };
+
+        // Return connection to filter phase
+        const connection = createConnection('to_filter_from_decision', FILTER_PHASE_NODE_NAME, { transform });
+        return [connection];
+    };
+
+    return createDecision(CHECK_EXISTING_DECISION_NAME, decide);
+};
 
 export const create = async (config: Config, operator: dreadcabinet.Operator): Promise<LocatePhaseNode> => {
     const logger = Logging.getLogger();
@@ -49,49 +105,32 @@ export const create = async (config: Config, operator: dreadcabinet.Operator): P
         const outputPath: string = await operator.constructOutputDirectory(date);
         const contextPath: string = path.join(outputPath, '.context');
         await storage.createDirectory(contextPath);
-        const detailPath: string = path.join(outputPath, '.detail');
-        await storage.createDirectory(detailPath);
         const safeSubject = eml.subject ? eml.subject.substring(0, 12).replace(/[^a-zA-Z0-9-_]/g, '_') : '';
         const filename: string = await operator.constructFilename(date, 'output', hash, { subject: safeSubject });
         return {
             creationTime: date,
             outputPath,
             contextPath,
-            detailPath,
             hash,
             filename,
             eml,
         };
     }
 
+    const phase = createPhase(LOCATE_PHASE_NAME, { execute });
+    const checkExistingDecision = await createCheckExistingDecision();
 
-    const transform = async (output: Output, context: Context): Promise<[SimplifyPhaseInput, Context]> => {
-        context = {
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
             ...context,
-            creationTime: output.creationTime,
-            outputPath: output.outputPath,
-            contextPath: output.contextPath,
-            detailPath: output.detailPath,
-            hash: output.hash,
-            filename: output.filename,
-            eml: output.eml,
+            ...output,
         };
 
-        // TODO: Figure out a better way to handle errors during transformation...
-        if (!context.eml) {
-            throw new Error('eml is required for simplify phase');
-        }
-        return [
-            {
-                eml: context.eml as EmlContent,
-            },
-            context,
-        ];
+        return [output, processedContext];
     }
 
-    const phase = createPhase(LOCATE_PHASE_NAME, { execute });
-    const connection = createConnection(TO_SIMPLIFY_CONNECTION_NAME, SIMPLIFY_PHASE_NODE_NAME, { transform });
     return createPhaseNode(LOCATE_PHASE_NODE_NAME, phase, {
-        next: [connection]
+        next: [checkExistingDecision],
+        process,
     });
 }

@@ -1,15 +1,15 @@
-import { jest } from '@jest/globals';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { setLogLevel, getLogger, LogContext } from '../src/logging.js';
 import winston from 'winston';
 import { PROGRAM_NAME } from '../src/constants.js';
 
 // Spy on winston methods instead of mocking the entire module
-jest.spyOn(winston, 'createLogger');
+vi.spyOn(winston, 'createLogger');
 
 describe('Logging module', () => {
     beforeEach(() => {
         // Clear mock calls before each test
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     test('getLogger returns a logger instance', () => {
@@ -22,7 +22,7 @@ describe('Logging module', () => {
     });
 
     test('setLogLevel creates a new logger with the specified level', () => {
-        const createLoggerSpy = jest.spyOn(winston, 'createLogger');
+        const createLoggerSpy = vi.spyOn(winston, 'createLogger');
 
         // Set log level to debug
         setLogLevel('debug');
@@ -41,7 +41,7 @@ describe('Logging module', () => {
     });
 
     test('setLogLevel with info level configures logger differently than other levels', () => {
-        const createLoggerSpy = jest.spyOn(winston, 'createLogger');
+        const createLoggerSpy = vi.spyOn(winston, 'createLogger');
 
         // Set log level to info
         setLogLevel('info');
@@ -86,14 +86,14 @@ describe('Logging module', () => {
     });
 
     test('logger with context includes context in metadata', () => {
-        const createLoggerSpy = jest.spyOn(winston, 'createLogger');
+        const createLoggerSpy = vi.spyOn(winston, 'createLogger');
 
         // Get a fresh logger
         setLogLevel('debug');
         const logger = getLogger();
 
         // Spy on the logger's info method
-        const infoSpy = jest.spyOn(logger, 'info');
+        const infoSpy = vi.spyOn(logger, 'info');
 
         // Log with context
         const context: LogContext = { requestId: '123', userId: '456' };

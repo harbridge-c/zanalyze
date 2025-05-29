@@ -1,3 +1,9 @@
+export const clean = (obj: any) => {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([_, v]) => v !== undefined)
+    );
+}
+
 // Utility function for deep merging two objects.
 export function deepMerge(target: any, source: any): any {
     for (const key in source) {

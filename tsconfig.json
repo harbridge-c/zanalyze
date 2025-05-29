@@ -9,8 +9,7 @@
     "outDir": "./dist",
     "rootDir": ".",
     "types": [
-      "node",
-      "jest"
+      "node"
     ],
     "incremental": true,
     "allowJs": true,

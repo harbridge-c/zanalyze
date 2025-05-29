@@ -1,7 +1,7 @@
 import * as DreadCabinet from "@theunwalked/dreadcabinet";
 import * as CardiganTime from '@theunwalked/cardigantime';
 import { Command } from "commander";
-import { ALLOWED_MODELS, CRUDZAP_DEFAULTS, DEFAULT_CONTEXT_DIRECTORY, DEFAULT_DEBUG, DEFAULT_DRY_RUN, DEFAULT_MODEL, DEFAULT_REPLACE, DEFAULT_SILLY, DEFAULT_VERBOSE, PROGRAM_NAME, VERSION } from "./constants";
+import { ZANALYZE_DEFAULTS, DEFAULT_CONTEXT_DIRECTORY, DEFAULT_DEBUG, DEFAULT_DRY_RUN, DEFAULT_MODEL, DEFAULT_REPLACE, DEFAULT_SILLY, DEFAULT_VERBOSE, PROGRAM_NAME, VERSION, DEFAULT_CLASSIFY_MODEL } from "./constants";
 import { getLogger, setLogLevel } from "./logging";
 import { Args, CombinedArgs, Config, DateRange, JobArgs, JobConfig } from "./types";
 import * as Dates from "./util/dates";
@@ -28,11 +28,14 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
         .option('--debug', `enable debug logging (Default: ${DEFAULT_DEBUG})`)
         .option('--silly', `enable silly logging (Default: ${DEFAULT_SILLY})`)
         .option('--model <model>', `OpenAI model to use (Default: ${DEFAULT_MODEL})`)
+        .option('--classify-model <classifyModel>', `OpenAI model to use for classifying emails (Default: ${DEFAULT_CLASSIFY_MODEL})`)
         .option('--context-directories [contextDirectories...]', `directory containing context files to be included in prompts (Default: ${DEFAULT_CONTEXT_DIRECTORY})`)
         .option('--replace', `replace existing summary files if they exist (Default: ${DEFAULT_REPLACE})`)
         .version(VERSION);
 
     await dreadcabinet.configure(program);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     program = await cardigantime.configure(program);
     program.parse();
 
@@ -50,6 +53,7 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
         dryRun: cliCombinedArgs.dryRun,
         limit: cliCombinedArgs.limit,
         model: cliCombinedArgs.model,
+        classifyModel: cliCombinedArgs.classifyModel,
         overrides: cliCombinedArgs.overrides,
         contextDirectories: cliCombinedArgs.contextDirectories,
         replace: cliCombinedArgs.replace,
@@ -83,15 +87,15 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
     // Read the Raw values from the dreadcabinet Command Line Arguments
     const dreadcabinetValues = await dreadcabinet.read(cliArgs);
 
-    let crudzapConfig: Config = deepmerge(
-        CRUDZAP_DEFAULTS,
+    let zanalyzeConfig: Config = deepmerge(
+        ZANALYZE_DEFAULTS,
         fileValues,   // Apply file values (overwrites defaults)
         dreadcabinetValues,
         clean(cliArgs) // Apply all CLI args last (highest precedence)
     ) as Config;
-    await validateCrudzapConfig(crudzapConfig);
-    logger.debug('Crudzap config: %s',
-        '\n\n' + JSON.stringify(crudzapConfig, null, 2).replace(/^/gm, '    ') + '\n\n');
+    await validateZanalyzeConfig(zanalyzeConfig);
+    logger.debug('Zanalyze config: %s',
+        '\n\n' + JSON.stringify(zanalyzeConfig, null, 2).replace(/^/gm, '    ') + '\n\n');
 
     const jobConfig: JobConfig = {
         ...clean(cliJobArgs),
@@ -100,10 +104,10 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
     logger.debug('Job config: %s',
         '\n\n' + JSON.stringify(jobConfig, null, 2).replace(/^/gm, '    ') + '\n\n');
 
-    crudzapConfig = dreadcabinet.applyDefaults(crudzapConfig) as Config;
+    zanalyzeConfig = dreadcabinet.applyDefaults(zanalyzeConfig) as Config;
 
     const dateRange: DateRange = createDateRange({
-        timezone: crudzapConfig.timezone,
+        timezone: zanalyzeConfig.timezone,
         currentMonth: jobConfig.currentMonth ?? false,
         start: jobConfig.start ? new Date(jobConfig.start) : undefined,
         end: jobConfig.end ? new Date(jobConfig.end) : undefined
@@ -111,7 +115,7 @@ export const configure = async (dreadcabinet: DreadCabinet.DreadCabinet, cardiga
     logger.debug('Date range: %s',
         '\n\n' + JSON.stringify(dateRange, null, 2).replace(/^/gm, '    ') + '\n\n');
 
-    return [crudzapConfig, dateRange];
+    return [zanalyzeConfig, dateRange];
 }
 
 export const validateJobConfig = async (jobConfig: JobConfig) => {
@@ -119,11 +123,39 @@ export const validateJobConfig = async (jobConfig: JobConfig) => {
         throw new Error('You must specify a date range using --start/--end or use --current-month.');
     }
 
-    if (jobConfig.start && isNaN(new Date(jobConfig.start).getTime())) {
-        throw new Error(`Invalid start date format: ${jobConfig.start}. Please use YYYY-MM-DD.`);
+    // Date format validation regex (YYYY-MM-DD)
+    const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+    if (jobConfig.start) {
+        if (!dateFormatRegex.test(jobConfig.start)) {
+            throw new Error(`Invalid start date format: ${jobConfig.start}. Please use YYYY-MM-DD.`);
+        }
+        const startDate = new Date(jobConfig.start);
+        if (isNaN(startDate.getTime())) {
+            throw new Error(`Invalid start date format: ${jobConfig.start}. Please use YYYY-MM-DD.`);
+        }
+        // Validate the date components are correct (e.g., no month 13, no day 32)
+        const [year, month, day] = jobConfig.start.split('-').map(Number);
+        const testDate = new Date(year, month - 1, day);
+        if (testDate.getFullYear() !== year || testDate.getMonth() !== month - 1 || testDate.getDate() !== day) {
+            throw new Error(`Invalid start date: ${jobConfig.start}. Date does not exist.`);
+        }
     }
-    if (jobConfig.end && isNaN(new Date(jobConfig.end).getTime())) {
-        throw new Error(`Invalid end date format: ${jobConfig.end}. Please use YYYY-MM-DD.`);
+
+    if (jobConfig.end) {
+        if (!dateFormatRegex.test(jobConfig.end)) {
+            throw new Error(`Invalid end date format: ${jobConfig.end}. Please use YYYY-MM-DD.`);
+        }
+        const endDate = new Date(jobConfig.end);
+        if (isNaN(endDate.getTime())) {
+            throw new Error(`Invalid end date format: ${jobConfig.end}. Please use YYYY-MM-DD.`);
+        }
+        // Validate the date components are correct
+        const [year, month, day] = jobConfig.end.split('-').map(Number);
+        const testDate = new Date(year, month - 1, day);
+        if (testDate.getFullYear() !== year || testDate.getMonth() !== month - 1 || testDate.getDate() !== day) {
+            throw new Error(`Invalid end date: ${jobConfig.end}. Date does not exist.`);
+        }
     }
 
     if (jobConfig.currentMonth && (jobConfig.start || jobConfig.end)) {
@@ -131,7 +163,7 @@ export const validateJobConfig = async (jobConfig: JobConfig) => {
     }
 }
 
-async function validateCrudzapConfig(
+async function validateZanalyzeConfig(
     config: Config
 ): Promise<void> {
 
@@ -146,10 +178,6 @@ async function validateCrudzapConfig(
 function validateModel(model: string | undefined, required: boolean, modelConfigName: string, modelOptionName: string): void {
     if (required && !model) {
         throw new Error(`Model is required either in the config file (${modelConfigName}) or as a command line argument (${modelOptionName})`);
-    }
-
-    if (model && !ALLOWED_MODELS.includes(model)) {
-        throw new Error(`Invalid model: ${model}. Valid models are: ${ALLOWED_MODELS.join(', ')}`);
     }
 }
 

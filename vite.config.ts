@@ -59,18 +59,17 @@ export default defineConfig({
     ],
     build: {
         target: 'esnext',
-        outDir: 'dist',
-        lib: {
-            entry: './src/main.ts',
-            formats: ['es'],
-        },
+        outDir: 'dist/zanalyze',
         rollupOptions: {
             external: ['@theunwalked/cardigantime', '@vortiq/eml-parse-js', '@theunwalked/dreadcabinet', '@riotprompt/riotprompt', '@riotprompt/riotprompt/formatter', '@riotprompt/riotprompt/chat', '@maxdrellin/xenocline'],
-            input: 'src/main.ts',
+            input: [
+                'src/utilities/address_frequency.ts',
+            ],
             output: {
                 format: 'esm',
                 entryFileNames: '[name].js',
                 preserveModules: true,
+                preserveModulesRoot: 'src',
                 exports: 'named',
             },
             plugins: [
@@ -84,4 +83,4 @@ export default defineConfig({
         minify: false,
         sourcemap: true
     },
-}); 
+});

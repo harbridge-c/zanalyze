@@ -1,12 +1,16 @@
+import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput, ProcessMethod, VerifyMethodResponse } from '@maxdrellin/xenocline';
+import { Chat, Formatter } from '@riotprompt/riotprompt';
 import { EmlContent } from '@vortiq/eml-parse-js';
-import { Context, createConnection, createPhase, createPhaseNode, Phase, Input as PhaseInput, PhaseNode, Output as PhaseOutput } from '@maxdrellin/xenocline';
 import { getLogger } from '../logging';
-import { Config } from '../types';
-import { FILTER_PHASE_NODE_NAME, Input as FilterPhaseInput } from './filter';
+import * as Prompt from '../prompt/prompts';
+import { Config as ZanalyzeConfig } from '../types';
+import * as OpenAI from '../util/openai';
+import { CLASSIFY_PHASE_NODE_NAME } from './classify';
+import { Input as ClassifyPhaseInput } from './classify';
 
 export const SIMPLIFY_PHASE_NODE_NAME = 'simplify_node';
 export const SIMPLIFY_PHASE_NAME = 'simplify';
-export const TO_FILTER_CONNECTION_NAME = 'toFilter';
+export const TO_CLASSIFY_CONNECTION_NAME = 'toClassify';
 // The locate phase might get the whole context, but, from a type perspective, it only needs the file
 export interface Input extends PhaseInput {
     eml: EmlContent;
@@ -20,15 +24,29 @@ export interface Output extends PhaseOutput {
 export type SimplifyPhase = Phase<Input, Output>;
 export type SimplifyPhaseNode = PhaseNode<Input, Output>;
 
+export type Config = Pick<ZanalyzeConfig, 'configDirectory' | 'overrides' | 'model' | 'debug' | 'simplify' | 'contextDirectories'>;
+
 export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
     const logger = getLogger();
 
+    const verify = async (input: Input): Promise<VerifyMethodResponse> => {
+        const response: VerifyMethodResponse = {
+            verified: true,
+            messages: [],
+        };
+
+        if (!input.eml) {
+            logger.error('eml is required for simplify function');
+            response.verified = false;
+            response.messages.push('eml is required for simplify function');
+        }
+
+        return response;
+    }
+
     const execute = async (input: Input): Promise<Output> => {
-
         let eml = input.eml;
-
         const simplify = config.simplify;
-
         const headerPatterns = simplify?.headers?.map(pattern => new RegExp(pattern, 'i')) ?? [];
 
         if (headerPatterns.length > 0) {
@@ -56,6 +74,20 @@ export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
             }
         }
 
+        // --- HTML to Text Conversion ---
+        if (!eml.text && eml.html) {
+            logger.debug('No text found in EML, converting HTML to text using OpenAI');
+            const prompts = await Prompt.create(config.model as Chat.Model, config.configDirectory, config.overrides, { contextDirectories: config.contextDirectories });
+            const html2textPrompt = await prompts.createHtml2TextPrompt(eml.html);
+            const formatter = Formatter.create({ logger });
+            const chatRequest: Chat.Request = formatter.formatPrompt(config.model as Chat.Model, html2textPrompt);
+            const textResult = await OpenAI.createCompletion(chatRequest.messages as any as import('openai/resources').ChatCompletionMessageParam[]);
+            eml = {
+                ...eml,
+                text: textResult,
+            };
+        }
+
         if (simplify?.textOnly) {
             eml = {
                 ...eml,
@@ -74,7 +106,7 @@ export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
     }
 
 
-    const transform = async (output: Output, context: Context): Promise<[FilterPhaseInput, Context]> => {
+    const transform = async (output: Output, context: Context): Promise<[ClassifyPhaseInput, Context]> => {
         context = {
             ...context,
             eml: output.eml,
@@ -92,10 +124,21 @@ export const create = async (config: Config): Promise<SimplifyPhaseNode> => {
         ];
     }
 
-    const phase = createPhase(SIMPLIFY_PHASE_NAME, { execute });
-    const connection = createConnection(TO_FILTER_CONNECTION_NAME, FILTER_PHASE_NODE_NAME, { transform });
+    const phase = createPhase(SIMPLIFY_PHASE_NAME, { execute, verify });
+    const connection = createConnection(TO_CLASSIFY_CONNECTION_NAME, CLASSIFY_PHASE_NODE_NAME, { transform });
+
+    const process: ProcessMethod<Output, Context> = async (output: Output, context: Context) => {
+        const processedContext = {
+            ...context,
+            ...output,
+        };
+
+        return [output, processedContext];
+    }
+
     return createPhaseNode(SIMPLIFY_PHASE_NODE_NAME, phase, {
-        next: [connection]
+        next: [connection],
+        process,
     });
 }
 

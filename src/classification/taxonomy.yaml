@@ -20,7 +20,29 @@ taxonomy:
       - casual_conversations
       - invitations
       - updates
-
+    education:
+      - tuition_financial_aid
+      - academic_topics
+      - grades
+      - attendance
+      - school_announcements
+      - fees_payments
+    transportation:
+      - rideshare_uber_lyft
+      - public_transportation
+      - parking_tickets
+      - maintenance
+      - registration
+      - insurance
+    memberships:
+      - group_communications
+      - membership_surveys
+      - event_participation
+      - volunteer_coordination
+    content_subscriptions:
+      - event_announcements
+      - content_updates
+      - creator_communications
   professional:
     work:
       - colleagues_clients
@@ -35,7 +57,10 @@ taxonomy:
     financial_administrative:
       - payroll_expenses
       - tax_documents
-
+    memberships:
+      - professional_organizations
+      - committee_communications
+      - standards_group_participation
   transactional:
     orders_purchases:
       - receipts_invoices

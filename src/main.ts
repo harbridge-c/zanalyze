@@ -1,4 +1,4 @@
 #!/usr/bin/env node
-import { main } from './crudzap';
+import { main } from './zanalyze';
 
 main();
