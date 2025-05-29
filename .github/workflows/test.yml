@@ -23,5 +23,5 @@ jobs:
       - run: pnpm test --coverage
       - uses: codecov/codecov-action@v5
         with:
-          slug: vortiq/zanalyze
+          slug: harbridge-c/zanalyze
           token: ${{ secrets.CODECOV_TOKEN }}
