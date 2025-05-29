@@ -72,11 +72,11 @@ export const initLogging = () => {
         }
     });
 
-    // Suppress Multipart without boundary warnings
+    // Suppress Multipart without boundary warnings and undefined Content-Type warnings
     const originalWarn = console.warn;
     console.warn = (...args: any[]) => {
         const message = args.join(' ');
-        if (message.includes('Multipart without boundary')) {
+        if (message.includes('Multipart without boundary') || message.includes('undefined Content-Type')) {
             logger.debug(message);
         } else {
             originalWarn(...args);

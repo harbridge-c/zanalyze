@@ -38,7 +38,7 @@ export default defineConfig({
     plugins: [
         ...VitePluginNode({
             adapter: 'express',
-            appPath: './src/main.ts',
+            appPath: './src/utilities/zanalyze_frequency.ts',
             exportName: 'viteNodeApp',
             tsCompiler: 'swc',
         }),
@@ -59,16 +59,16 @@ export default defineConfig({
     ],
     build: {
         target: 'esnext',
-        outDir: 'dist/zanalyze',
+        outDir: 'dist/utilities',
         rollupOptions: {
             external: ['@theunwalked/cardigantime', '@vortiq/eml-parse-js', '@theunwalked/dreadcabinet', '@riotprompt/riotprompt', '@riotprompt/riotprompt/formatter', '@riotprompt/riotprompt/chat', '@maxdrellin/xenocline'],
             input: [
-                'src/utilities/address_frequency.ts',
+                'src/utilities/zanalyze_frequency.ts',
             ],
             output: {
-                format: 'esm',
+                format: 'cjs',
                 entryFileNames: '[name].js',
-                preserveModules: true,
+                preserveModules: false,
                 preserveModulesRoot: 'src',
                 exports: 'named',
             },

@@ -22,6 +22,7 @@ Use the events content information to identify a list of events mentioned in the
 I would like the output of this summary to follow this output format:
 
     Date: Date Email was Received
+    Labels: List each label present in the `gmlift-LabelNames` field
     From: From Email Header
     To: To Email Header
     (Any CC or BCC Header)

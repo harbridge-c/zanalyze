@@ -3,9 +3,9 @@
     "version": "0.0.1",
     "description": "EML Processor",
     "main": "dist/main.js",
-    "type": "module",
     "bin": {
-        "zanalyze": "./dist/main.js"
+        "zanalyze": "./dist/zanalyze/main.js",
+        "zanalyze-frequency": "./dist/utilities/zanalyze_frequency.js"
     },
     "repository": {
         "type": "git",
@@ -13,7 +13,9 @@
     },
     "packageManager": "pnpm@10.10.0",
     "scripts": {
-        "build": "tsc --noEmit && vite build && copyfiles -u 1 \"src/**/*.md\" dist && copyfiles -u 1 \"src/**/*.yaml\" dist",
+        "build": "tsc --noEmit && pnpm run build:zanalyze-frequency && pnpm run build:zanalyze",
+        "build:zanalyze": "vite build && copyfiles -u 1 \"src/**/*.md\" dist/zanalyze && copyfiles -u 1 \"src/**/*.yaml\" dist/zanalyze",
+        "build:zanalyze-frequency": "vite build --config vite.zanalyze_frequency.config.ts",
         "start": "node dist/main.js",
         "watch": "vite build --watch",
         "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
