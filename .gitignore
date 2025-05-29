@@ -12,3 +12,10 @@ output/
 input/
 .zanalyze/
 pnpm-workspace.yaml
+vitest.config.ts
+vite.config.ts
+vite.zanalyze.t_frequency.config.ts
+tsconfig.json
+nodemon.json
+eslint.config.mjs
+debug.txt
