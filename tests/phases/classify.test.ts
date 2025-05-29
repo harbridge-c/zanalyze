@@ -152,7 +152,7 @@ describe('Classify Phase', () => {
             expect((phaseNode as any).process).toBeDefined();
 
             // Verify prompts were created
-            expect(Prompt.create).toHaveBeenCalledWith(mockConfig.classifyModel, mockConfig);
+            expect(Prompt.create).toHaveBeenCalledWith(mockConfig.classifyModel, mockConfig.configDirectory, mockConfig.overrides, {});
 
             // Verify phase was created
             expect(createPhase).toHaveBeenCalledWith(

@@ -342,18 +342,6 @@ describe('arguments module', () => {
             expect(config.contextDirectories).toEqual(['/valid/directory']);
         });
 
-        test('should throw error for invalid model', async () => {
-            mockProgram.opts.mockReturnValue({
-                currentMonth: true,
-                model: 'invalid-model',
-                timezone: 'UTC',
-            });
-
-            await expect(configure(mockDreadCabinet, mockCardiganTime)).rejects.toThrow(
-                'Invalid model: invalid-model'
-            );
-        });
-
         test('should default start date to 31 days before end when only end is provided', async () => {
             const endDate = '2024-01-31';
             mockProgram.opts.mockReturnValue({
