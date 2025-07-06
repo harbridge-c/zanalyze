@@ -11,6 +11,7 @@ test/
 output/
 input/
 .zanalyze/
+processed/
 pnpm-workspace.yaml
 vitest.config.ts
 vite.config.ts

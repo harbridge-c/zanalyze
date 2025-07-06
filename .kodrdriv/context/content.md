@@ -1,1 +1,0 @@
-This is a project that it focused on EML files that you might export from a service like Outlook for GMail, and the project has been designed to make it easier to reduce the size of the data that might ultimately be required to analyze email content.
